@@ -52,6 +52,9 @@ const FAMINE_PROD_MULTIPLIER: float = 0.8
 var roster: Roster
 var candidates: Array[int] = []
 
+# --- Map ---
+var hex_map: HexMap
+
 func _ready() -> void:
 	config = load(CONFIG_PATH) as GameConfig
 	reserve = config.reserve_initial
@@ -68,6 +71,7 @@ func _ready() -> void:
 	}
 	roster = Roster.new(config.roster_size)
 	_refill_candidates()
+	hex_map = HexMap.new(2)   # rayon 2 = 19 tuiles
 	_begin_turn()
 	turn_advanced.emit(turn, reserve)
 	resources_changed.emit(resources)

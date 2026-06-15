@@ -77,6 +77,29 @@ func _build_ui() -> void:
 	root.add_child(_advance_button)
 	_status_label = _add_label(root, "")
 
+	var dump_btn := Button.new()
+	dump_btn.text = "[DEBUG] Dump map"
+	dump_btn.pressed.connect(_on_dump_map)
+	root.add_child(dump_btn)
+
+func _on_dump_map() -> void:
+	print("\n=== Carte (rayon %d, %d tuiles) ===" % [GameState.hex_map.radius, GameState.hex_map.tiles.size()])
+	# Groupe par type pour résumer
+	var counts: Dictionary = {}
+	for tile in GameState.hex_map.tiles.values():
+		var type_name: String = HexTile.Type.keys()[tile.type]
+		counts[type_name] = counts.get(type_name, 0) + 1
+	for type_name in counts:
+		print("  %s: %d" % [type_name, counts[type_name]])
+	# Liste détaillée
+	print("Détail :")
+	for tile in GameState.hex_map.tiles.values():
+		var type_name: String = HexTile.Type.keys()[tile.type]
+		print("  (q=%d, r=%d) %s" % [tile.q, tile.r, type_name])
+	# Test des voisins du centre
+	var center := GameState.hex_map.get_tile(0, 0)
+	print("Voisins du bunker (devraient être 6) : %d" % GameState.hex_map.neighbors(center).size())
+
 func _on_targeted_wake_failed(profession: String) -> void:
 	if _targeted_status != null:
 		_targeted_status.text = "  No %s found in cryo. Reserve spent." % profession
