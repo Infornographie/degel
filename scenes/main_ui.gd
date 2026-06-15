@@ -30,6 +30,8 @@ func _ready() -> void:
 	GameState.survivor_assigned.connect(_refresh)
 	GameState.survivor_died.connect(_refresh)
 	GameState.run_ended.connect(_on_run_ended)
+	GameState.candidates_changed.connect(_refresh)
+	GameState.targeted_wake_failed.connect(_on_targeted_wake_failed)
 	_refresh()
 
 func _build_ui() -> void:
@@ -74,6 +76,10 @@ func _build_ui() -> void:
 	_advance_button.pressed.connect(_on_advance_pressed)
 	root.add_child(_advance_button)
 	_status_label = _add_label(root, "")
+
+func _on_targeted_wake_failed(profession: String) -> void:
+	if _targeted_status != null:
+		_targeted_status.text = "  No %s found in cryo. Reserve spent." % profession
 
 func _add_label(parent: Node, text: String) -> Label:
 	var label := Label.new()
@@ -129,23 +135,29 @@ func _rebuild_lists() -> void:
 	for child in _asleep_list.get_children():
 		child.queue_free()
 
+	# Awake
 	var awake_count := 0
-	var asleep_count := 0
 	for s in GameState.survivors():
 		if s.awake:
 			_add_awake_row(s)
 			awake_count += 1
-		else:
-			_add_asleep_row(s)
-			asleep_count += 1
-
 	_awake_header.text = "Awake (%d)" % awake_count
-	_asleep_header.text = "Asleep (%d)" % asleep_count
-
 	if awake_count == 0:
 		_add_label(_awake_list, "  (nobody awake yet)")
-	if asleep_count == 0:
-		_add_label(_asleep_list, "  (nobody asleep)")
+
+	# Awakening pool : candidats visibles
+	var sleeping_count := GameState.roster.sleeping_count()
+	_asleep_header.text = "Awakening pool — Still in cryo: %d" % sleeping_count
+	if sleeping_count == 0:
+		_add_label(_asleep_list, "  (cryo bay is empty)")
+	else:
+		for id in GameState.candidates:
+			var s: Survivor = GameState.roster.get_by_id(id)
+			if s != null:
+				_add_candidate_row(s)
+		# Search bar
+		_add_label(_asleep_list, "")  # spacer
+		_add_targeted_search_row()
 
 func _add_awake_row(s: Survivor) -> void:
 	var row := HBoxContainer.new()
@@ -193,7 +205,7 @@ func _format_output(job: int) -> String:
 		parts.append("+%.0f %s" % [out[resource_name], resource_name])
 	return ", ".join(parts)
 
-func _add_asleep_row(s: Survivor) -> void:
+func _add_candidate_row(s: Survivor) -> void:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_asleep_list.add_child(row)
@@ -209,6 +221,42 @@ func _add_asleep_row(s: Survivor) -> void:
 	var sid := s.id
 	btn.pressed.connect(func(): GameState.wake(sid))
 	row.add_child(btn)
+
+var _targeted_selector: OptionButton
+var _targeted_status: Label
+
+func _add_targeted_search_row() -> void:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_asleep_list.add_child(row)
+
+	var label := Label.new()
+	label.text = "  Search for:"
+	row.add_child(label)
+
+	_targeted_selector = OptionButton.new()
+	for prof in GameState.roster.all_professions():
+		_targeted_selector.add_item(prof)
+	_targeted_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(_targeted_selector)
+
+	var btn := Button.new()
+	btn.text = "Search (-%.0f reserve)" % GameState.config.wake_cost_targeted
+	btn.disabled = not GameState.can_targeted_wake()
+	btn.pressed.connect(_on_targeted_search_pressed)
+	row.add_child(btn)
+
+	# Petit label de feedback (rempli par le signal failed)
+	_targeted_status = _add_label(_asleep_list, "")
+
+func _on_targeted_search_pressed() -> void:
+	if _targeted_selector == null:
+		return
+	var idx := _targeted_selector.selected
+	if idx < 0:
+		return
+	var profession := _targeted_selector.get_item_text(idx)
+	GameState.targeted_wake(profession)
 
 # --- Misc ---
 

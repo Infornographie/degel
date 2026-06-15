@@ -15,6 +15,8 @@ signal synth_skipped
 signal famine_started
 signal famine_ended
 signal run_ended(cause: EndCause)
+signal candidates_changed
+signal targeted_wake_failed(profession: String)
 
 var config: GameConfig
 var job_outputs: Dictionary = {}
@@ -46,7 +48,9 @@ var _deaths_triggered: bool = false
 var production_multiplier: float = 1.0
 const FAMINE_PROD_MULTIPLIER: float = 0.8
 
+# --- Roster ---
 var roster: Roster
+var candidates: Array[int] = []
 
 func _ready() -> void:
 	config = load(CONFIG_PATH) as GameConfig
@@ -63,6 +67,7 @@ func _ready() -> void:
 		Job.LOG: {"wood": config.log_wood_output},
 	}
 	roster = Roster.new(config.roster_size)
+	_refill_candidates()
 	_begin_turn()
 	turn_advanced.emit(turn, reserve)
 	resources_changed.emit(resources)
@@ -94,6 +99,8 @@ func wake(id: int) -> bool:
 		reserve = 0.0
 		is_over = true
 		run_ended.emit(EndCause.RESERVE_DEPLETED)
+	candidates.erase(s.id)
+	_clean_candidates()
 	return true
 
 func can_wake(id: int) -> bool:
@@ -220,11 +227,10 @@ func _resolve_famine_deaths() -> void:
 ## "passives" du tour (réacteur). Les flux non consommés sont perdus en fin de tour.
 func _begin_turn() -> void:
 	_wakes_done_this_turn = 0
-	# Les flux du tour partent de zéro
 	resources["electricity"] = 0.0
 	resources["heat"] = 0.0
-	# Le réacteur du bunker produit de l'électricité résiduelle
 	resources["electricity"] += config.bunker_production
+	_refill_candidates()
 	resources_changed.emit(resources)
 
 func compute_score() -> Dictionary:
@@ -232,3 +238,73 @@ func compute_score() -> Dictionary:
 		"survivors_saved": awake_count(),
 		"survivors_total": roster.initial_size,
 	}
+
+## Retire les candidats qui ne sont plus valides (éveillés, morts).
+## Ne complète pas le pool — c'est _begin_turn qui s'en charge en début de tour.
+func _clean_candidates() -> void:
+	var clean: Array[int] = []
+	for id in candidates:
+		var s: Survivor = roster.get_by_id(id)
+		if s != null and not s.awake:
+			clean.append(id)
+	candidates = clean
+	candidates_changed.emit()
+
+## Nettoie puis complète jusqu'à candidate_pool_size.
+## Appelé uniquement en début de tour.
+func _refill_candidates() -> void:
+	_clean_candidates()
+	var needed: int = config.candidate_pool_size - candidates.size()
+	if needed > 0:
+		var new_ids: Array[int] = roster.draw_candidates(needed, candidates)
+		for id in new_ids:
+			candidates.append(id)
+		candidates_changed.emit()
+
+## Recherche ciblée d'une profession. Coût plus élevé, échec possible.
+## - Si quelqu'un de cette profession est endormi : il est réveillé, ajouté aux candidats si pas déjà là.
+## - Sinon : coût payé, signal d'échec, personne réveillé.
+## Le réveil ciblé consomme aussi le quota wakes_per_turn comme un réveil normal.
+func targeted_wake(profession: String) -> bool:
+	if is_over:
+		return false
+	if _wakes_done_this_turn >= config.wakes_per_turn:
+		return false
+	if reserve < config.wake_cost_targeted:
+		return false
+
+	# Coût payé dans tous les cas
+	reserve -= config.wake_cost_targeted
+	_wakes_done_this_turn += 1
+
+	var s: Survivor = roster.find_sleeping_by_profession(profession)
+	if s == null:
+		targeted_wake_failed.emit(profession)
+		candidates_changed.emit()  # force le refresh UI même sur échec
+		# Vérifier l'effondrement éventuel du coup
+		if reserve <= 0.0:
+			reserve = 0.0
+			is_over = true
+			run_ended.emit(EndCause.RESERVE_DEPLETED)
+		return false
+
+	s.awake = true
+	survivor_woken.emit(s)
+	# Retirer des candidats s'il y était
+	candidates.erase(s.id)
+	_clean_candidates()
+	if reserve <= 0.0:
+		reserve = 0.0
+		is_over = true
+		run_ended.emit(EndCause.RESERVE_DEPLETED)
+	return true
+
+## Indique si une recherche ciblée est actuellement possible.
+func can_targeted_wake() -> bool:
+	if is_over:
+		return false
+	if _wakes_done_this_turn >= config.wakes_per_turn:
+		return false
+	if reserve < config.wake_cost_targeted:
+		return false
+	return true

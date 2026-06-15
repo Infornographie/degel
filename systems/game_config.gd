@@ -13,10 +13,14 @@ class_name GameConfig
 @export var bunker_production: float = 6.0
 
 @export_group("Wake")
-## Coût d'un réveil, ponctionné directement sur la réserve.
+## Coût d'un réveil normal, ponctionné directement sur la réserve.
 @export var wake_cost: float = 10.0
+## Coût d'une recherche ciblée par profession. Échec possible (coût perdu).
+@export var wake_cost_targeted: float = 25.0
 ## Nombre maximum de réveils par tour. Augmentable plus tard via techno/bâtiment.
 @export var wakes_per_turn: int = 1
+## Nombre de candidats visibles dans le pool d'éveil.
+@export var candidate_pool_size: int = 3
 
 @export_group("Food")
 ## Nourriture consommée par survivant éveillé, chaque tour.
