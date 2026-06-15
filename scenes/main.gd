@@ -1,5 +1,5 @@
 extends Node
-## Test de l'étape 3c. Temporaire.
+## Test de l'étape 1.5a. Temporaire.
 
 func _ready() -> void:
 	GameState.turn_advanced.connect(_on_turn_advanced)
@@ -9,17 +9,18 @@ func _ready() -> void:
 	GameState.famine_ended.connect(_on_famine_ended)
 	GameState.run_ended.connect(_on_run_ended)
 
-	# Scénario : on réveille les 5 survivants un à un, puis on les laisse
-	# crever de faim. Stock initial 10 → tour 1 conso 2, tour 2 conso 4, etc.
-	# La famine va déclencher rapidement, observons l'escalade.
-	print("Départ — réserve %.1f, nourriture %.1f" % [GameState.reserve, GameState.food_stock])
+	print("Roster généré aléatoirement :")
+	for i in GameState.survivors().size():
+		var s: Survivor = GameState.survivors()[i]
+		print("  #%d %s — %s" % [i, s.name, s.profession])
 
-	for i in 5:
-		GameState.wake(i)
+	print("\n-- On rejoue : réveil de tout le monde, puis on les laisse crever --")
+	var to_wake := GameState.survivors().duplicate()
+	for s in to_wake:
+		GameState.wake(s.id)
 		GameState.advance_turn()
 
-	print("\n-- Tout le monde éveillé, plus de nourriture, on regarde l'enfer arriver --")
-	for i in 15:
+	for i in 500:
 		if GameState.is_over:
 			break
 		GameState.advance_turn()
@@ -29,10 +30,10 @@ func _on_turn_advanced(turn: int, energy: float, reserve: float, food: float) ->
 		turn, reserve, food, GameState.awake_count(), GameState.famine_turns])
 
 func _on_survivor_woken(s: Survivor) -> void:
-	print("  >> %s (%s) réveillé(e)." % [s.name, s.role])
+	print("  >> %s (%s) réveillé(e)." % [s.name, s.profession])
 
 func _on_survivor_died(s: Survivor) -> void:
-	print("  ✝ %s (%s) est mort(e) de faim." % [s.name, s.role])
+	print("  ✝ %s (%s) est mort(e) de faim." % [s.name, s.profession])
 
 func _on_famine_started() -> void:
 	print("  !! Famine déclarée.")

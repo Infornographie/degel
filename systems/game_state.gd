@@ -15,7 +15,7 @@ var turn: int = 0
 var is_over: bool = false
 
 # --- Énergie ---
-var reserve: float = 50.0
+var reserve: float = 500.0
 var core_upkeep: float = 10.0
 var bunker_production: float = 6.0
 var surface_production: float = 0.0
@@ -36,35 +36,35 @@ var wakes_per_turn: int = 1
 var _wakes_done_this_turn: int = 0
 
 # --- Famine ---
-# Nombre de tours consécutifs où on n'a pas pu nourrir tout le monde.
 var famine_turns: int = 0
-# Une fois les morts amorcées par le tirage, elles continuent tant que la famine dure.
 var _deaths_triggered: bool = false
-# Multiplicateur de production sous famine. Sera appliqué quand la prod existera,
-# AVEC arrondi-plancher à 1 unité produite (pour éviter la spirale).
 var production_multiplier: float = 1.0
 const FAMINE_PROD_MULTIPLIER: float = 0.8
 
-var survivors: Array[Survivor] = []
+# --- Roster (sous-système) ---
+var roster_size: int = 100
+var roster: Roster
 
 func _ready() -> void:
-	survivors = [
-		Survivor.new("Mara", "Ingénieure"),
-		Survivor.new("Yann", "Fermier"),
-		Survivor.new("Lina", "Médecin"),
-		Survivor.new("Otto", "Mécanicien"),
-		Survivor.new("Sève", "Botaniste"),
-	]
+	roster = Roster.new(roster_size)
 	_begin_turn()
 	turn_advanced.emit(turn, energy_available, reserve, food_stock)
 
-func wake(index: int) -> bool:
+# Raccourcis vers le roster, pour que l'extérieur n'ait pas à savoir.
+func awake_count() -> int:
+	return roster.awake_count()
+
+func awake_survivors() -> Array[Survivor]:
+	return roster.awake_survivors()
+
+func survivors() -> Array[Survivor]:
+	return roster.survivors
+
+func wake(id: int) -> bool:
 	if is_over:
 		return false
-	if index < 0 or index >= survivors.size():
-		return false
-	var s: Survivor = survivors[index]
-	if s.awake:
+	var s: Survivor = roster.get_by_id(id)
+	if s == null or s.awake:
 		return false
 	if _wakes_done_this_turn >= wakes_per_turn:
 		return false
@@ -83,23 +83,10 @@ func wake(index: int) -> bool:
 func set_synth(on: bool) -> void:
 	synth_on = on
 
-func awake_survivors() -> Array[Survivor]:
-	var result: Array[Survivor] = []
-	for s in survivors:
-		if s.awake:
-			result.append(s)
-	return result
-
-func awake_count() -> int:
-	return awake_survivors().size()
-
-## Bilan de tour : 1) synthé, 2) repas + famine, 3) bilan énergie, 4) fin éventuelle.
 func advance_turn() -> void:
 	if is_over:
 		return
 
-	# On incrémente le tour D'ABORD : tout ce qui suit (synthé, repas, famine, bilan)
-	# appartient au nouveau tour. C'est ce qui rend l'ordre des signaux lisible.
 	turn += 1
 
 	# 1) Synthé
@@ -133,7 +120,7 @@ func advance_turn() -> void:
 	reserve -= core_upkeep
 
 	# 4) Fin éventuelle
-	if survivors.is_empty():
+	if roster.is_empty():
 		is_over = true
 		turn_advanced.emit(turn, energy_available, max(reserve, 0.0), food_stock)
 		run_ended.emit(EndCause.COLONY_LOST)
@@ -148,9 +135,6 @@ func advance_turn() -> void:
 	_begin_turn()
 	turn_advanced.emit(turn, energy_available, reserve, food_stock)
 
-## Gère le tirage et l'application des morts de famine pour ce tour.
-## Tirage de déclenchement : 25 % au tour 2 de famine, +25 % par tour, 100 % au tour 5.
-## Une fois déclenché : un mort par tour, et ça reste déclenché jusqu'au reset.
 func _resolve_famine_deaths() -> void:
 	if not _deaths_triggered:
 		if famine_turns >= 2:
@@ -158,17 +142,10 @@ func _resolve_famine_deaths() -> void:
 			if randi() % 100 < chance:
 				_deaths_triggered = true
 	if _deaths_triggered:
-		_kill_random_awake()
-
-func _kill_random_awake() -> void:
-	var pool: Array[Survivor] = awake_survivors()
-	if pool.is_empty():
-		# Plus personne d'éveillé : la conso retombe à 0 au tour suivant,
-		# la famine se résoudra d'elle-même. Pas de mort à infliger.
-		return
-	var victim: Survivor = pool[randi() % pool.size()]
-	survivors.erase(victim)
-	survivor_died.emit(victim)
+		var victim: Survivor = roster.pick_random_awake()
+		if victim != null:
+			roster.remove(victim)
+			survivor_died.emit(victim)
 
 func _begin_turn() -> void:
 	_wakes_done_this_turn = 0
@@ -177,5 +154,5 @@ func _begin_turn() -> void:
 func compute_score() -> Dictionary:
 	return {
 		"survivors_saved": awake_count(),
-		"survivors_total": survivors.size(),
+		"survivors_total": roster.initial_size,
 	}
