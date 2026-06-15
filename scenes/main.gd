@@ -35,7 +35,7 @@ func _ready() -> void:
 	GameState.advance_turn()
 
 	print("\n-- On laisse filer pour observer une éventuelle famine --")
-	for i in 10:
+	for i in 200:
 		if GameState.is_over:
 			break
 		GameState.advance_turn()
