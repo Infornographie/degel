@@ -17,17 +17,17 @@ const PROFESSIONS: Array[String] = [
 var survivors: Array[Survivor] = []
 var initial_size: int = 0   # immuable, pour le score
 
-func _init(size: int) -> void:
-	_generate(size)
+func _init(initial_count: int) -> void:
+	_generate(initial_count)
 	initial_size = survivors.size()
 
 ## Tire `size` survivants. Noms et professions piochés sans remise pour les noms
 ## (pas de doublon dans le bunker), avec remise pour les professions (deux CEO,
 ## c'est plausible et même savoureux).
-func _generate(size: int) -> void:
+func _generate(count: int) -> void:
 	var available_names := NAMES.duplicate()
 	available_names.shuffle()
-	var n: int = min(size, available_names.size())
+	var n: int = min(count, available_names.size())
 	for i in n:
 		var name: String = available_names[i]
 		var profession: String = PROFESSIONS[randi() % PROFESSIONS.size()]
