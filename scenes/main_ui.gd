@@ -1,5 +1,5 @@
 extends Control
-## UI placeholder — 3a. Colonization-style readout.
+## UI placeholder — 4b. Layout horizontal : panneau gauche + carte droite.
 
 const JOB_ORDER: Array[int] = [
 	GameState.Job.IDLE,
@@ -13,6 +13,25 @@ const JOB_BASE_LABELS := {
 	GameState.Job.LOG: "Chop wood",
 }
 
+# --- Hex rendering ---
+# Taille d'un hex pointe-en-haut (rayon du cercle circonscrit).
+const HEX_SIZE: float = 32.0
+
+const TILE_LABELS := {
+	HexTile.Type.BUNKER: "B",
+	HexTile.Type.PLAINS: "P",
+	HexTile.Type.FOREST: "F",
+	HexTile.Type.MOUNTAIN: "M",
+}
+
+const TILE_COLORS := {
+	HexTile.Type.BUNKER: Color("#2c2c2c"),       # noir/charbon
+	HexTile.Type.PLAINS: Color("#a8c25a"),       # vert clair / herbe
+	HexTile.Type.FOREST: Color("#3a6b35"),       # vert foncé / sapinière
+	HexTile.Type.MOUNTAIN: Color("#7a5a3a"),     # marron / pierre
+}
+
+# --- UI refs ---
 var _resources_section: VBoxContainer
 var _famine_label: Label
 var _awake_header: Label
@@ -21,6 +40,9 @@ var _asleep_header: Label
 var _asleep_list: VBoxContainer
 var _advance_button: Button
 var _status_label: Label
+var _map_container: Control
+var _targeted_selector: OptionButton
+var _targeted_status: Label
 
 func _ready() -> void:
 	_build_ui()
@@ -29,80 +51,79 @@ func _ready() -> void:
 	GameState.survivor_woken.connect(_refresh)
 	GameState.survivor_assigned.connect(_refresh)
 	GameState.survivor_died.connect(_refresh)
-	GameState.run_ended.connect(_on_run_ended)
 	GameState.candidates_changed.connect(_refresh)
 	GameState.targeted_wake_failed.connect(_on_targeted_wake_failed)
+	GameState.run_ended.connect(_on_run_ended)
 	_refresh()
 
 func _build_ui() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	# Scroll global : tout le contenu peut dépasser la fenêtre et rester accessible.
-	var outer_scroll := ScrollContainer.new()
-	outer_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	outer_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	add_child(outer_scroll)
 
-	var root := VBoxContainer.new()
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 12)
-	outer_scroll.add_child(root)
+	# Split horizontal : panneau gauche (scroll) + carte droite
+	var split := HBoxContainer.new()
+	split.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	split.add_theme_constant_override("separation", 16)
+	add_child(split)
 
-	# --- Resources ---
+	# --- Panneau gauche scrollable ---
+	var left_scroll := ScrollContainer.new()
+	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left_scroll.size_flags_stretch_ratio = 0.6
+	left_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	split.add_child(left_scroll)
+
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 12)
+	left_scroll.add_child(left)
+	_build_left_panel(left)
+
+	# --- Panneau droite : carte ---
+	var right := VBoxContainer.new()
+	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right.size_flags_stretch_ratio = 0.4
+	split.add_child(right)
+	_build_map_panel(right)
+
+func _build_left_panel(parent: VBoxContainer) -> void:
 	_resources_section = VBoxContainer.new()
-	root.add_child(_resources_section)
-	_famine_label = _add_label(root, "")
+	parent.add_child(_resources_section)
+	_famine_label = _add_label(parent, "")
 
-	root.add_child(HSeparator.new())
+	parent.add_child(HSeparator.new())
 
-	# --- Awake ---
-	_awake_header = _add_label(root, "Awake (0)")
+	_awake_header = _add_label(parent, "Awake (0)")
 	_awake_list = VBoxContainer.new()
 	_awake_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_child(_awake_list)
+	parent.add_child(_awake_list)
 
-	root.add_child(HSeparator.new())
+	parent.add_child(HSeparator.new())
 
-	# --- Asleep ---
-	_asleep_header = _add_label(root, "Asleep (0)")
+	_asleep_header = _add_label(parent, "Asleep (0)")
 	_asleep_list = VBoxContainer.new()
 	_asleep_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_child(_asleep_list)
+	parent.add_child(_asleep_list)
 
-	root.add_child(HSeparator.new())
+	parent.add_child(HSeparator.new())
 
-	# --- Advance + status ---
 	_advance_button = Button.new()
 	_advance_button.text = "Advance one turn"
 	_advance_button.pressed.connect(_on_advance_pressed)
-	root.add_child(_advance_button)
-	_status_label = _add_label(root, "")
+	parent.add_child(_advance_button)
+	_status_label = _add_label(parent, "")
 
-	var dump_btn := Button.new()
-	dump_btn.text = "[DEBUG] Dump map"
-	dump_btn.pressed.connect(_on_dump_map)
-	root.add_child(dump_btn)
-
-func _on_dump_map() -> void:
-	print("\n=== Carte (rayon %d, %d tuiles) ===" % [GameState.hex_map.radius, GameState.hex_map.tiles.size()])
-	# Groupe par type pour résumer
-	var counts: Dictionary = {}
-	for tile in GameState.hex_map.tiles.values():
-		var type_name: String = HexTile.Type.keys()[tile.type]
-		counts[type_name] = counts.get(type_name, 0) + 1
-	for type_name in counts:
-		print("  %s: %d" % [type_name, counts[type_name]])
-	# Liste détaillée
-	print("Détail :")
-	for tile in GameState.hex_map.tiles.values():
-		var type_name: String = HexTile.Type.keys()[tile.type]
-		print("  (q=%d, r=%d) %s" % [tile.q, tile.r, type_name])
-	# Test des voisins du centre
-	var center := GameState.hex_map.get_tile(0, 0)
-	print("Voisins du bunker (devraient être 6) : %d" % GameState.hex_map.neighbors(center).size())
-
-func _on_targeted_wake_failed(profession: String) -> void:
-	if _targeted_status != null:
-		_targeted_status.text = "  No %s found in cryo. Reserve spent." % profession
+func _build_map_panel(parent: VBoxContainer) -> void:
+	_add_label(parent, "Surface map")
+	# Conteneur libre : on positionne les hex à l'absolu dedans.
+	_map_container = Control.new()
+	_map_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_map_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_map_container.custom_minimum_size = Vector2(320, 320)
+	parent.add_child(_map_container)
+	_draw_map()
+	# Petite légende sous la carte
+	parent.add_child(HSeparator.new())
+	_add_label(parent, "Legend:  B = Bunker   P = Plains   F = Forest   M = Mountain")
 
 func _add_label(parent: Node, text: String) -> Label:
 	var label := Label.new()
@@ -110,37 +131,70 @@ func _add_label(parent: Node, text: String) -> Label:
 	parent.add_child(label)
 	return label
 
+# --- Map rendering ---
+
+func _draw_map() -> void:
+	for child in _map_container.get_children():
+		child.queue_free()
+
+	# Centre du conteneur, comme origine du repère hex
+	var origin := _map_container.size * 0.5
+	if origin.x == 0:
+		# Au tout premier _ready, la taille n'est pas encore résolue ; on tape une valeur safe.
+		origin = Vector2(160, 160)
+
+	for tile in GameState.hex_map.tiles.values():
+		var pixel := _hex_to_pixel(tile.q, tile.r) + origin
+		_add_hex_label(tile, pixel)
+
+## Conversion cube → pixel pour hexagones pointe-en-haut.
+## Convention Red Blob Games : x = size * sqrt(3) * (q + r/2), y = size * 3/2 * r
+func _hex_to_pixel(q: int, r: int) -> Vector2:
+	var x: float = HEX_SIZE * sqrt(3.0) * (q + r / 2.0)
+	var y: float = HEX_SIZE * 1.5 * r
+	return Vector2(x, y)
+
+func _add_hex_label(tile: HexTile, center: Vector2) -> void:
+	# Fond coloré : un PanelContainer ou directement un ColorRect en arrière-plan.
+	var bg := ColorRect.new()
+	var box_size := Vector2(HEX_SIZE, HEX_SIZE)
+	bg.size = box_size
+	bg.position = center - box_size * 0.5
+	bg.color = TILE_COLORS.get(tile.type, Color.GRAY)
+	_map_container.add_child(bg)
+
+	# La lettre par-dessus, en blanc pour le contraste.
+	var label := Label.new()
+	label.text = TILE_LABELS.get(tile.type, "?")
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.size = box_size
+	label.position = center - box_size * 0.5
+	label.add_theme_color_override("font_color", Color.WHITE)
+	_map_container.add_child(label)
+
+# --- Resources (inchangé) ---
+
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
 	_rebuild_resources()
 	_famine_label.text = "⚠ Famine — turn %d" % GameState.famine_turns if GameState.famine_turns > 0 else ""
 	_rebuild_lists()
-
-# --- Resources ---
+	_draw_map()
 
 func _rebuild_resources() -> void:
 	for child in _resources_section.get_children():
 		child.queue_free()
 	_add_label(_resources_section, "Turn %d" % GameState.turn)
-
-	# Reserve (l'horloge)
 	_add_label(_resources_section, "Reserve: %.1f   (-%.1f / turn)" % [
 		GameState.reserve, GameState.config.core_upkeep])
-
-	# Food
 	var food_income := _aggregate_production("food")
 	var food_outcome: float = GameState.awake_count() * GameState.config.food_per_survivor
 	_add_label(_resources_section, "Food: %.1f   (+%.1f / -%.1f)" % [
 		GameState.resources["food"], food_income, food_outcome])
-
-	# Wood
 	var wood_income := _aggregate_production("wood")
 	_add_label(_resources_section, "Wood: %.1f   (+%.1f)" % [
 		GameState.resources["wood"], wood_income])
-
-	# Electricity (flux du tour seulement)
 	_add_label(_resources_section, "Electricity (this turn): %.1f" % GameState.resources["electricity"])
-
-	# Heat (flux du tour seulement)
 	_add_label(_resources_section, "Heat (this turn): %.1f" % GameState.resources["heat"])
 
 func _aggregate_production(resource_name: String) -> float:
@@ -150,7 +204,7 @@ func _aggregate_production(resource_name: String) -> float:
 		total += out.get(resource_name, 0.0)
 	return total
 
-# --- Survivor lists ---
+# --- Survivor lists (inchangé) ---
 
 func _rebuild_lists() -> void:
 	for child in _awake_list.get_children():
@@ -158,7 +212,6 @@ func _rebuild_lists() -> void:
 	for child in _asleep_list.get_children():
 		child.queue_free()
 
-	# Awake
 	var awake_count := 0
 	for s in GameState.survivors():
 		if s.awake:
@@ -168,7 +221,6 @@ func _rebuild_lists() -> void:
 	if awake_count == 0:
 		_add_label(_awake_list, "  (nobody awake yet)")
 
-	# Awakening pool : candidats visibles
 	var sleeping_count := GameState.roster.sleeping_count()
 	_asleep_header.text = "Awakening pool — Still in cryo: %d" % sleeping_count
 	if sleeping_count == 0:
@@ -178,8 +230,7 @@ func _rebuild_lists() -> void:
 			var s: Survivor = GameState.roster.get_by_id(id)
 			if s != null:
 				_add_candidate_row(s)
-		# Search bar
-		_add_label(_asleep_list, "")  # spacer
+		_add_label(_asleep_list, "")
 		_add_targeted_search_row()
 
 func _add_awake_row(s: Survivor) -> void:
@@ -245,9 +296,6 @@ func _add_candidate_row(s: Survivor) -> void:
 	btn.pressed.connect(func(): GameState.wake(sid))
 	row.add_child(btn)
 
-var _targeted_selector: OptionButton
-var _targeted_status: Label
-
 func _add_targeted_search_row() -> void:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -269,7 +317,6 @@ func _add_targeted_search_row() -> void:
 	btn.pressed.connect(_on_targeted_search_pressed)
 	row.add_child(btn)
 
-	# Petit label de feedback (rempli par le signal failed)
 	_targeted_status = _add_label(_asleep_list, "")
 
 func _on_targeted_search_pressed() -> void:
@@ -285,6 +332,10 @@ func _on_targeted_search_pressed() -> void:
 
 func _on_advance_pressed() -> void:
 	GameState.advance_turn()
+
+func _on_targeted_wake_failed(profession: String) -> void:
+	if _targeted_status != null:
+		_targeted_status.text = "  No %s found in cryo. Reserve spent." % profession
 
 func _on_run_ended(cause: GameState.EndCause) -> void:
 	var label := ""
