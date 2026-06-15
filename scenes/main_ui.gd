@@ -37,8 +37,6 @@ var _targeted_selector: OptionButton
 var _targeted_status: Label
 var _tile_popup: PopupMenu
 var _popup_tile_key: String = ""
-# Maps de tracking pour les sous-menus : id d'item dans le menu principal → id du survivant
-var _popup_survivor_by_item: Dictionary = {}
 # id dans le sous-menu (encodé : survivor_id * 100 + job_id) → (survivor_id, job_id)
 var _popup_submenus: Array[PopupMenu] = []
 
@@ -166,7 +164,7 @@ func _on_tile_clicked(event: InputEvent, tile_key: String) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_open_tile_popup(tile_key, event.global_position)
 
-func _open_tile_popup(tile_key: String, position: Vector2) -> void:
+func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 	_popup_tile_key = tile_key
 	var tile := GameState.hex_map.get_tile_by_key(tile_key)
 	if tile == null:
@@ -224,7 +222,7 @@ func _open_tile_popup(tile_key: String, position: Vector2) -> void:
 		_tile_popup.set_item_disabled(_tile_popup.item_count - 1, true)
 
 	_tile_popup.id_pressed.connect(_on_main_popup_selected)
-	_tile_popup.position = Vector2i(position)
+	_tile_popup.position = Vector2i(popup_position)
 	_tile_popup.popup()
 
 func _on_main_popup_selected(index: int) -> void:
