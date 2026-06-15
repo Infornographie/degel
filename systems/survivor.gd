@@ -7,6 +7,7 @@ var name: String
 var profession: String
 var awake: bool = false
 var job: int = 0   # GameState.Job.IDLE par défaut
+var tile_key: String = ""   # tuile où il travaille, "" si au bunker
 
 func _init(p_id: int, p_name: String, p_profession: String) -> void:
 	id = p_id

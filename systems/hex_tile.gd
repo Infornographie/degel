@@ -8,17 +8,18 @@ var q: int
 var r: int
 var s: int
 var type: int = Type.PLAINS
-var worker_id: int = -1   # id du survivant qui travaille ici, -1 si vide
+var worker_id: int = -1
+# Rendements par job, rempli à la génération depuis le TileConfig.
+# Forme : { GameState.Job.FARMER: 4.0, GameState.Job.LUMBERJACK: 1.0, ... }
+var yields: Dictionary = {}
 
 func _init(p_q: int, p_r: int) -> void:
 	q = p_q
 	r = p_r
-	s = -p_q - p_r   # contrainte q+r+s=0
+	s = -p_q - p_r
 
-## Clé string pour stocker la tuile dans un Dictionary indexé par position.
 func key() -> String:
 	return "%d,%d" % [q, r]
 
-## Clé pour une paire de coords arbitraires (utilitaire statique).
 static func make_key(p_q: int, p_r: int) -> String:
 	return "%d,%d" % [p_q, p_r]
