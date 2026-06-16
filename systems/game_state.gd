@@ -1,26 +1,23 @@
 extends Node
 ## GameState — cœur de la simulation (autoload).
 
-enum EndCause { RESERVE_DEPLETED, AUTONOMY_REACHED, COLONY_LOST }
+enum EndCause { REACTOR_DEAD, COLONY_LOST }
 enum Job { IDLE, FARMER, LUMBERJACK, MINER }
 
 const CONFIG_PATH := "res://systems/game_config_default.tres"
 const TILE_CONFIG_PATH := "res://systems/tile_config_default.tres"
 
-# Mapping job → nom de la ressource qu'il produit.
-# La quantité vient de la tuile.
 const JOB_RESOURCE := {
 	Job.FARMER: "food",
 	Job.LUMBERJACK: "wood",
 	Job.MINER: "ore",
 }
 
-signal turn_advanced(turn: int, reserve: float)
+signal turn_advanced(turn: int)
 signal resources_changed(resources: Dictionary)
 signal survivor_woken(survivor: Survivor)
 signal survivor_assigned(survivor: Survivor, job: int)
-signal survivor_died(survivor: Survivor)
-signal synth_skipped
+signal nightly_deaths(events: Array)   # liste de { name, profession, cause }
 signal famine_started
 signal famine_ended
 signal candidates_changed
@@ -30,19 +27,30 @@ signal run_ended(cause: EndCause)
 
 var config: GameConfig
 var tile_config: TileConfig
+var job_outputs: Dictionary = {}
 
 var turn: int = 0
 var is_over: bool = false
 
-var reserve: float
+# --- Réacteur (flux, pas de stock) ---
+var reactor_output: float
+
+# --- Ressources : flux et stocks ---
 var resources: Dictionary = {}
 
+# --- Nécrologie (pour 5f) ---
+var _deaths_this_turn: Array = []
+var necrology: Array = []  # entrées { name, profession, cause, turn }
+
+# --- Synthétiseur ---
 var synth_on: bool = false
 const SYNTH_ELECTRICITY_COST: float = 3.0
 const SYNTH_FOOD_OUTPUT: float = 1.0
 
+# --- Réveils ---
 var _wakes_done_this_turn: int = 0
 
+# --- Famine ---
 var famine_turns: int = 0
 var _deaths_triggered: bool = false
 var production_multiplier: float = 1.0
@@ -55,7 +63,7 @@ var candidates: Array[int] = []
 func _ready() -> void:
 	config = load(CONFIG_PATH) as GameConfig
 	tile_config = load(TILE_CONFIG_PATH) as TileConfig
-	reserve = config.reserve_initial
+	reactor_output = config.reactor_initial_output
 	resources = {
 		"food": config.food_initial,
 		"wood": 0.0,
@@ -63,11 +71,17 @@ func _ready() -> void:
 		"electricity": 0.0,
 		"heat": 0.0,
 	}
+	job_outputs = {
+		Job.IDLE: {},
+		Job.FARMER: {"food": 0.0},  # rempli par les tuiles
+		Job.LUMBERJACK: {"wood": 0.0},
+		Job.MINER: {"ore": 0.0},
+	}
 	roster = Roster.new(config.roster_size)
 	hex_map = HexMap.new(2, tile_config)
 	_refill_candidates()
 	_begin_turn()
-	turn_advanced.emit(turn, reserve)
+	turn_advanced.emit(turn)
 	resources_changed.emit(resources)
 
 func awake_count() -> int:
@@ -79,6 +93,8 @@ func awake_survivors() -> Array[Survivor]:
 func survivors() -> Array[Survivor]:
 	return roster.survivors
 
+## Réveille un survivant. Le coût est prélevé sur l'élec du tour.
+## Peut rendre l'élec négative — l'extinction se résoudra en fin de tour.
 func wake(id: int) -> bool:
 	if is_over:
 		return false
@@ -87,18 +103,13 @@ func wake(id: int) -> bool:
 		return false
 	if _wakes_done_this_turn >= config.wakes_per_turn:
 		return false
-	if reserve < config.wake_cost:
-		return false
-	reserve -= config.wake_cost
+	resources["electricity"] -= config.wake_cost
 	_wakes_done_this_turn += 1
 	s.awake = true
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()
-	if reserve <= 0.0:
-		reserve = 0.0
-		is_over = true
-		run_ended.emit(EndCause.RESERVE_DEPLETED)
+	resources_changed.emit(resources)
 	return true
 
 func can_wake(id: int) -> bool:
@@ -108,8 +119,6 @@ func can_wake(id: int) -> bool:
 	if s == null or s.awake:
 		return false
 	if _wakes_done_this_turn >= config.wakes_per_turn:
-		return false
-	if reserve < config.wake_cost:
 		return false
 	return true
 
@@ -123,9 +132,6 @@ func assign_job(id: int, job: int) -> bool:
 	survivor_assigned.emit(s, job)
 	return true
 
-## Affecte un colon éveillé à une tuile. Renvoie true si succès.
-## Si la tuile était occupée par quelqu'un d'autre, ce dernier est désaffecté.
-## Si le colon était déjà sur une autre tuile, il est désaffecté de l'ancienne.
 func assign_to_tile(survivor_id: int, tile_key: String) -> bool:
 	if is_over:
 		return false
@@ -135,12 +141,10 @@ func assign_to_tile(survivor_id: int, tile_key: String) -> bool:
 	var tile := hex_map.get_tile_by_key(tile_key)
 	if tile == null or tile.type == HexTile.Type.BUNKER:
 		return false
-	# Libérer l'ancien occupant de la tuile, s'il y en a un
 	if tile.worker_id != -1 and tile.worker_id != survivor_id:
 		var previous: Survivor = roster.get_by_id(tile.worker_id)
 		if previous != null:
 			previous.tile_key = ""
-	# Libérer l'ancienne tuile du colon
 	if s.tile_key != "":
 		var old_tile := hex_map.get_tile_by_key(s.tile_key)
 		if old_tile != null:
@@ -151,7 +155,6 @@ func assign_to_tile(survivor_id: int, tile_key: String) -> bool:
 	tile_assignment_changed.emit(tile)
 	return true
 
-## Retire un colon de sa tuile (s'il en a une).
 func unassign_from_tile(survivor_id: int) -> bool:
 	var s: Survivor = roster.get_by_id(survivor_id)
 	if s == null or s.tile_key == "":
@@ -170,15 +173,17 @@ func advance_turn() -> void:
 	if is_over:
 		return
 	turn += 1
+	_deaths_this_turn.clear()
+
+	# 1) Synthé (consomme l'élec du tour avant les productions de tuile)
+	if synth_on:
+		resources["electricity"] -= SYNTH_ELECTRICITY_COST
+		resources["food"] += SYNTH_FOOD_OUTPUT
+
+	# 2) Production des tuiles
 	_resolve_tile_production()
 
-	if synth_on:
-		if resources["electricity"] >= SYNTH_ELECTRICITY_COST:
-			resources["electricity"] -= SYNTH_ELECTRICITY_COST
-			resources["food"] += SYNTH_FOOD_OUTPUT
-		else:
-			synth_skipped.emit()
-
+	# 3) Repas + famine
 	var needed: float = awake_count() * config.food_per_survivor
 	var was_in_famine := famine_turns > 0
 	if resources["food"] >= needed:
@@ -196,27 +201,75 @@ func advance_turn() -> void:
 			famine_started.emit()
 		_resolve_famine_deaths()
 
-	resources_changed.emit(resources)
+	# 4) Extinction des cryos si élec négative
+	_resolve_extinctions()
 
-	reserve -= config.core_upkeep
+	# 5) Érosion du réacteur
+	if turn % config.reactor_decay_interval == 0:
+		reactor_output -= 1.0
+		if reactor_output <= 0.0:
+			reactor_output = 0.0
+			is_over = true
+			resources_changed.emit(resources)
+			turn_advanced.emit(turn)
+			run_ended.emit(EndCause.REACTOR_DEAD)
+			return
 
+	# 6) Fin éventuelle par colonie vide
 	if roster.is_empty():
 		is_over = true
-		turn_advanced.emit(turn, max(reserve, 0.0))
+		resources_changed.emit(resources)
+		turn_advanced.emit(turn)
 		run_ended.emit(EndCause.COLONY_LOST)
-		return
-	if reserve <= 0.0:
-		reserve = 0.0
-		is_over = true
-		turn_advanced.emit(turn, reserve)
-		run_ended.emit(EndCause.RESERVE_DEPLETED)
 		return
 
 	_begin_turn()
-	turn_advanced.emit(turn, reserve)
+	if not _deaths_this_turn.is_empty():
+		nightly_deaths.emit(_deaths_this_turn.duplicate())
+	turn_advanced.emit(turn)
+	resources_changed.emit(resources)
 
-## Pour chaque tuile occupée, calcule la production selon le job du colon
-## et le rendement de la tuile pour ce job.
+## Tant que l'élec est négative, on tente d'éteindre des cryos pour combler.
+## 1 mort certain par tranche de 10, +X% par point partiel.
+func _resolve_extinctions() -> void:
+	while resources["electricity"] < 0.0:
+		var deficit: float = -resources["electricity"]
+		var sleepers := _sleeping_survivors()
+		if sleepers.is_empty():
+			break  # plus personne à éteindre, la colonie va se vider
+		# Tranche complète : 1 mort certain
+		if deficit >= 10.0:
+			var victim: Survivor = sleepers[randi() % sleepers.size()]
+			_extinguish(victim)
+			resources["electricity"] += 10.0
+			continue
+		# Reste partiel : probabilité
+		var chance: float = deficit * config.extinction_chance_per_point  # en %
+		if randf() * 100.0 < chance:
+			var victim: Survivor = sleepers[randi() % sleepers.size()]
+			_extinguish(victim)
+		# Qu'il y ait eu mort ou non, le partiel est résolu, on sort.
+		resources["electricity"] = 0.0
+		break
+
+func _extinguish(victim: Survivor) -> void:
+	roster.remove(victim)
+	var entry := {
+		"name": victim.name,
+		"profession": victim.profession,
+		"cause": "switched off",
+		"turn": turn,
+	}
+	necrology.append(entry)
+	_deaths_this_turn.append(entry)
+
+func _sleeping_survivors() -> Array[Survivor]:
+	var result: Array[Survivor] = []
+	for s in roster.survivors:
+		if not s.awake:
+			result.append(s)
+	return result
+
 func _resolve_tile_production() -> void:
 	for tile in hex_map.tiles.values():
 		if tile.worker_id == -1:
@@ -237,8 +290,6 @@ func _resolve_tile_production() -> void:
 				produced = 1.0
 		resources[resource_name] = resources.get(resource_name, 0.0) + produced
 
-## Rendement effectif d'un colon donné, ce tour, sur sa tuile actuelle.
-## Renvoie { "resource_name": amount } pour l'UI. Vide si pas de tuile ou rendement nul.
 func get_survivor_output(s: Survivor) -> Dictionary:
 	if s.tile_key == "":
 		return {}
@@ -265,22 +316,26 @@ func _resolve_famine_deaths() -> void:
 	if _deaths_triggered:
 		var victim: Survivor = roster.pick_random_awake()
 		if victim != null:
-			# Libérer sa tuile s'il en occupait une
 			if victim.tile_key != "":
 				var t := hex_map.get_tile_by_key(victim.tile_key)
 				if t != null:
 					t.worker_id = -1
 					tile_assignment_changed.emit(t)
 			roster.remove(victim)
-			survivor_died.emit(victim)
+			var entry := {
+				"name": victim.name,
+				"profession": victim.profession,
+				"cause": "starved",
+				"turn": turn,
+			}
+			necrology.append(entry)
+			_deaths_this_turn.append(entry)
 
 func _begin_turn() -> void:
 	_wakes_done_this_turn = 0
-	resources["electricity"] = 0.0
+	resources["electricity"] = reactor_output
 	resources["heat"] = 0.0
-	resources["electricity"] += config.bunker_production
 	_refill_candidates()
-	resources_changed.emit(resources)
 
 func _clean_candidates() -> void:
 	var clean: Array[int] = []
@@ -305,35 +360,25 @@ func targeted_wake(profession: String) -> bool:
 		return false
 	if _wakes_done_this_turn >= config.wakes_per_turn:
 		return false
-	if reserve < config.wake_cost_targeted:
-		return false
-	reserve -= config.wake_cost_targeted
+	resources["electricity"] -= config.wake_cost_targeted
 	_wakes_done_this_turn += 1
 	var s: Survivor = roster.find_sleeping_by_profession(profession)
 	if s == null:
 		targeted_wake_failed.emit(profession)
 		candidates_changed.emit()
-		if reserve <= 0.0:
-			reserve = 0.0
-			is_over = true
-			run_ended.emit(EndCause.RESERVE_DEPLETED)
+		resources_changed.emit(resources)
 		return false
 	s.awake = true
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()
-	if reserve <= 0.0:
-		reserve = 0.0
-		is_over = true
-		run_ended.emit(EndCause.RESERVE_DEPLETED)
+	resources_changed.emit(resources)
 	return true
 
 func can_targeted_wake() -> bool:
 	if is_over:
 		return false
 	if _wakes_done_this_turn >= config.wakes_per_turn:
-		return false
-	if reserve < config.wake_cost_targeted:
 		return false
 	return true
 

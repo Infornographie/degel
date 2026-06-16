@@ -1,11 +1,7 @@
 [gd_resource type="Resource" script_class="GameConfig" format=3 uid="uid://eriq7lbqmetb"]
 
-[ext_resource type="Script" uid="uid://3w6wgsow1p5k" path="res://systems/game_config.gd" id="1_si5n0"]
+[ext_resource type="Script" uid="uid://3w6wgsow1p5k" path="res://systems/game_config.gd" id="1_my8f0"]
 
 [resource]
-script = ExtResource("1_si5n0")
-reserve_initial = 500.0
-roster_size = 50
-farm_food_output = 4.0
-log_wood_output = 4.0
+script = ExtResource("1_my8f0")
 metadata/_custom_type_script = "uid://3w6wgsow1p5k"

@@ -40,7 +40,6 @@ var _popup_tile_key: String = ""
 # id dans le sous-menu (encodé : survivor_id * 100 + job_id) → (survivor_id, job_id)
 var _popup_submenus: Array[PopupMenu] = []
 var _synth_checkbox: CheckBox
-var _synth_skipped_at_turn: int = -1
 
 func _ready() -> void:
 	_build_ui()
@@ -48,12 +47,11 @@ func _ready() -> void:
 	GameState.resources_changed.connect(_refresh)
 	GameState.survivor_woken.connect(_refresh)
 	GameState.survivor_assigned.connect(_refresh)
-	GameState.survivor_died.connect(_refresh)
 	GameState.candidates_changed.connect(_refresh)
 	GameState.tile_assignment_changed.connect(_refresh)
 	GameState.targeted_wake_failed.connect(_on_targeted_wake_failed)
 	GameState.run_ended.connect(_on_run_ended)
-	GameState.synth_skipped.connect(_on_synth_skipped)
+	GameState.nightly_deaths.connect(_on_nightly_deaths)
 	_refresh()
 
 func _build_ui() -> void:
@@ -105,6 +103,10 @@ func _build_left_panel(parent: VBoxContainer) -> void:
 	_advance_button.pressed.connect(_on_advance_pressed)
 	parent.add_child(_advance_button)
 	_status_label = _add_label(parent, "")
+	var necro_btn := Button.new()
+	necro_btn.text = "Necrology"
+	necro_btn.pressed.connect(_on_necrology_pressed)
+	parent.add_child(necro_btn)
 
 func _build_map_panel(parent: VBoxContainer) -> void:
 	_add_label(parent, "Surface map (click a tile to assign)")
@@ -168,8 +170,9 @@ func _add_hex(tile: HexTile, center: Vector2) -> void:
 	_map_container.add_child(label)
 
 func _on_tile_clicked(event: InputEvent, tile_key: String) -> void:
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		_open_tile_popup(tile_key, event.global_position)
+	if event is InputEventMouseButton and event.pressed:
+		if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+			_open_tile_popup(tile_key, event.global_position)
 
 func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 	_popup_tile_key = tile_key
@@ -279,8 +282,18 @@ func _rebuild_resources() -> void:
 	for child in _resources_section.get_children():
 		child.queue_free()
 	_add_label(_resources_section, "Turn %d" % GameState.turn)
-	_add_label(_resources_section, "Reserve: %.1f   (-%.1f / turn)" % [
-		GameState.reserve, GameState.config.core_upkeep])
+		
+	# Bloc énergie : tout sur une vue compacte
+	var elec_value: float = GameState.resources["electricity"]
+	var elec_parts: Array[String] = []
+	elec_parts.append("Reactor: %.0f" % GameState.reactor_output)
+	if GameState.synth_on:
+		elec_parts.append("synth: -%.0f" % GameState.SYNTH_ELECTRICITY_COST)
+	elec_parts.append("usable: %.1f" % elec_value)
+	_add_label(_resources_section, "Electricity — " + " | ".join(elec_parts))
+	if GameState.resources["heat"] > 0.0:
+		_add_label(_resources_section, "Heat (this turn): %.1f" % GameState.resources["heat"])
+
 	var food_income := _aggregate_production("food")
 	var food_outcome: float = GameState.awake_count() * GameState.config.food_per_survivor
 	_add_label(_resources_section, "Food: %.1f   (+%.1f / -%.1f)" % [
@@ -291,22 +304,9 @@ func _rebuild_resources() -> void:
 	var ore_income := _aggregate_production("ore")
 	_add_label(_resources_section, "Ore: %.1f   (+%.1f)" % [
 		GameState.resources["ore"], ore_income])
-	var elec_value: float = GameState.resources["electricity"]
-	var elec_line: String
-	if GameState.synth_on:
-		var net: float = elec_value - GameState.SYNTH_ELECTRICITY_COST
-		elec_line = "Electricity (this turn): %.1f   (synth: -%.0f → %.1f usable)" % [
-			elec_value, GameState.SYNTH_ELECTRICITY_COST, net]
-	else:
-		elec_line = "Electricity (this turn): %.1f" % elec_value
-	_add_label(_resources_section, elec_line)
-	_add_label(_resources_section, "Heat (this turn): %.1f" % GameState.resources["heat"])
-	# Synchronise le checkbox avec l'état réel (sans déclencher le signal)
+
 	if _synth_checkbox != null:
 		_synth_checkbox.set_pressed_no_signal(GameState.synth_on)
-	# Warning si le synthé a sauté ce tour
-	if _synth_skipped_at_turn == GameState.turn:
-		_add_label(_resources_section, "  ⚠ Synth ON but not enough electricity — skipped.")
 
 func _aggregate_production(resource_name: String) -> float:
 	var total: float = 0.0
@@ -426,17 +426,43 @@ func _on_targeted_wake_failed(profession: String) -> void:
 func _on_run_ended(cause: GameState.EndCause) -> void:
 	var label := ""
 	match cause:
-		GameState.EndCause.RESERVE_DEPLETED: label = "Reserve depleted"
-		GameState.EndCause.AUTONOMY_REACHED: label = "Autonomy reached"
+		GameState.EndCause.REACTOR_DEAD: label = "Reactor dead"
 		GameState.EndCause.COLONY_LOST: label = "Colony lost"
 	var score = GameState.compute_score()
-	_status_label.text = "Run ended: %s — Score: %d / %d survivors" % [
+	var message := "%s\n\nFinal score: %d / %d survivors saved." % [
 		label, score.survivors_saved, score.survivors_total]
+	_show_popup("Run ended", message)
+	_status_label.text = "Run ended — %s" % label
 	_advance_button.disabled = true
 
 func _on_synth_toggled(pressed: bool) -> void:
 	GameState.set_synth(pressed)
 	_refresh()
 
-func _on_synth_skipped() -> void:
-	_synth_skipped_at_turn = GameState.turn
+func _on_necrology_pressed() -> void:
+	var lines: Array[String] = []
+	for entry in GameState.necrology:
+		lines.append("Turn %d — %s (%s) — %s" % [
+			entry.turn, entry.name, entry.profession, entry.cause])
+	var content := "\n".join(lines) if not lines.is_empty() else "(no losses yet)"
+	_show_popup("Necrology", content)
+
+func _show_popup(title: String, message: String) -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = title
+	dialog.dialog_text = message
+	add_child(dialog)
+	dialog.popup_centered()
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+
+func _on_nightly_deaths(events: Array) -> void:
+	var lines: Array[String] = []
+	for entry in events:
+		if entry.cause == "switched off":
+			lines.append("%s (%s) was switched off." % [entry.name, entry.profession])
+		elif entry.cause == "starved":
+			lines.append("%s (%s) starved to death." % [entry.name, entry.profession])
+		else:
+			lines.append("%s (%s) — %s." % [entry.name, entry.profession, entry.cause])
+	_show_popup("News from the bunker", "Last night:\n\n" + "\n".join(lines))
