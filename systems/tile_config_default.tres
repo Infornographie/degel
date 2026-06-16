@@ -4,4 +4,6 @@
 
 [resource]
 script = ExtResource("1_s4xpt")
+plains_ratio = 0.0
+forest_ratio = 0.8
 metadata/_custom_type_script = "uid://ob78017rha5x"

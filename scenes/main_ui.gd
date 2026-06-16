@@ -39,6 +39,8 @@ var _tile_popup: PopupMenu
 var _popup_tile_key: String = ""
 # id dans le sous-menu (encodé : survivor_id * 100 + job_id) → (survivor_id, job_id)
 var _popup_submenus: Array[PopupMenu] = []
+var _synth_checkbox: CheckBox
+var _synth_skipped_at_turn: int = -1
 
 func _ready() -> void:
 	_build_ui()
@@ -51,6 +53,7 @@ func _ready() -> void:
 	GameState.tile_assignment_changed.connect(_refresh)
 	GameState.targeted_wake_failed.connect(_on_targeted_wake_failed)
 	GameState.run_ended.connect(_on_run_ended)
+	GameState.synth_skipped.connect(_on_synth_skipped)
 	_refresh()
 
 func _build_ui() -> void:
@@ -81,6 +84,10 @@ func _build_ui() -> void:
 func _build_left_panel(parent: VBoxContainer) -> void:
 	_resources_section = VBoxContainer.new()
 	parent.add_child(_resources_section)
+	_synth_checkbox = CheckBox.new()
+	_synth_checkbox.text = "Food synthesizer  (−3 elec → +1 food)"
+	_synth_checkbox.toggled.connect(_on_synth_toggled)
+	parent.add_child(_synth_checkbox)
 	_famine_label = _add_label(parent, "")
 	parent.add_child(HSeparator.new())
 	_awake_header = _add_label(parent, "Awake (0)")
@@ -284,8 +291,22 @@ func _rebuild_resources() -> void:
 	var ore_income := _aggregate_production("ore")
 	_add_label(_resources_section, "Ore: %.1f   (+%.1f)" % [
 		GameState.resources["ore"], ore_income])
-	_add_label(_resources_section, "Electricity (this turn): %.1f" % GameState.resources["electricity"])
+	var elec_value: float = GameState.resources["electricity"]
+	var elec_line: String
+	if GameState.synth_on:
+		var net: float = elec_value - GameState.SYNTH_ELECTRICITY_COST
+		elec_line = "Electricity (this turn): %.1f   (synth: -%.0f → %.1f usable)" % [
+			elec_value, GameState.SYNTH_ELECTRICITY_COST, net]
+	else:
+		elec_line = "Electricity (this turn): %.1f" % elec_value
+	_add_label(_resources_section, elec_line)
 	_add_label(_resources_section, "Heat (this turn): %.1f" % GameState.resources["heat"])
+	# Synchronise le checkbox avec l'état réel (sans déclencher le signal)
+	if _synth_checkbox != null:
+		_synth_checkbox.set_pressed_no_signal(GameState.synth_on)
+	# Warning si le synthé a sauté ce tour
+	if _synth_skipped_at_turn == GameState.turn:
+		_add_label(_resources_section, "  ⚠ Synth ON but not enough electricity — skipped.")
 
 func _aggregate_production(resource_name: String) -> float:
 	var total: float = 0.0
@@ -412,3 +433,10 @@ func _on_run_ended(cause: GameState.EndCause) -> void:
 	_status_label.text = "Run ended: %s — Score: %d / %d survivors" % [
 		label, score.survivors_saved, score.survivors_total]
 	_advance_button.disabled = true
+
+func _on_synth_toggled(pressed: bool) -> void:
+	GameState.set_synth(pressed)
+	_refresh()
+
+func _on_synth_skipped() -> void:
+	_synth_skipped_at_turn = GameState.turn
