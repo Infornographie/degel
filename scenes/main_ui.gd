@@ -1,13 +1,6 @@
 extends Control
 ## UI placeholder — 4c. Carte interactive, jobs territorialisés.
 
-const JOB_LABELS := {
-	GameState.Job.IDLE: "Idle",
-	GameState.Job.FARMER: "Farmer",
-	GameState.Job.LUMBERJACK: "Lumberjack",
-	GameState.Job.MINER: "Miner",
-}
-
 const HEX_SIZE: float = 32.0
 
 const TILE_LABELS := {
@@ -83,7 +76,7 @@ func _build_left_panel(parent: VBoxContainer) -> void:
 	_resources_section = VBoxContainer.new()
 	parent.add_child(_resources_section)
 	_synth_checkbox = CheckBox.new()
-	_synth_checkbox.text = "Food synthesizer  (−3 elec → +1 food)"
+	_synth_checkbox.text = tr("LABEL_SYNTH_TOGGLE")
 	_synth_checkbox.toggled.connect(_on_synth_toggled)
 	parent.add_child(_synth_checkbox)
 	_famine_label = _add_label(parent, "")
@@ -99,25 +92,25 @@ func _build_left_panel(parent: VBoxContainer) -> void:
 	parent.add_child(_asleep_list)
 	parent.add_child(HSeparator.new())
 	_advance_button = Button.new()
-	_advance_button.text = "Advance one turn"
+	_advance_button.text = tr("BTN_ADVANCE")
 	_advance_button.pressed.connect(_on_advance_pressed)
 	parent.add_child(_advance_button)
 	_status_label = _add_label(parent, "")
 	var necro_btn := Button.new()
-	necro_btn.text = "Necrology"
+	necro_btn.text = tr("BTN_NECROLOGY")
 	necro_btn.pressed.connect(_on_necrology_pressed)
 	parent.add_child(necro_btn)
 
 func _build_map_panel(parent: VBoxContainer) -> void:
-	_add_label(parent, "Surface map (click a tile to assign)")
+	_add_label(parent, tr("LABEL_MAP_TITLE"))
 	_map_container = Control.new()
 	_map_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_map_container.custom_minimum_size = Vector2(320, 320)
 	parent.add_child(_map_container)
 	parent.add_child(HSeparator.new())
-	_add_label(parent, "Legend:  B/P/F/M = Bunker/Plains/Forest/Mountain")
-	_add_label(parent, "Tile color = type, letter on tile = worker initial when assigned")
+	_add_label(parent, tr("LABEL_LEGEND_1"))
+	_add_label(parent, tr("LABEL_LEGEND_2"))
 
 func _add_label(parent: Node, text: String) -> Label:
 	var label := Label.new()
@@ -193,7 +186,7 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 
 	# Option Clear
 	if tile.worker_id != -1:
-		_tile_popup.add_item("Clear tile")
+		_tile_popup.add_item(tr("LABEL_CLEAR_TILE"))
 		_tile_popup.set_item_metadata(_tile_popup.item_count - 1, {"action": "clear"})
 		_tile_popup.add_separator()
 
@@ -209,7 +202,7 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		for job_id in jobs:
 			var yield_val: float = tile.yields.get(job_id, 0.0)
 			var resource_name: String = GameState.JOB_RESOURCE.get(job_id, "")
-			var label_text := "%s  (+%.0f %s)" % [JOB_LABELS[job_id], yield_val, resource_name]
+			var label_text := "%s  (+%.0f %s)" % [_job_label(job_id), yield_val, _resource_label(resource_name)]
 			sub.add_item(label_text)
 			sub.set_item_metadata(sub.item_count - 1, {"survivor_id": s.id, "job": job_id})
 
@@ -218,17 +211,17 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		# Indication d'emplacement courant du colon
 		var location_hint := ""
 		if s.tile_key != "" and s.tile_key != tile_key:
-			location_hint = "  ← currently @ " + _format_tile_label(s.tile_key)
+			location_hint = tr("LABEL_CURRENTLY_AT") + _format_tile_label(s.tile_key)
 		elif s.tile_key == tile_key:
-			location_hint = "  (here)"
+			location_hint = tr("LABEL_HERE")
 		else:
-			location_hint = "  (in bunker)"
+			location_hint = "  (" + tr("LABEL_IN_BUNKER") + ")"
 
-		_tile_popup.add_submenu_item("%s (%s)%s" % [s.name, s.profession, location_hint], sub.name)
+		_tile_popup.add_submenu_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint], sub.name)
 		any_available = true
 
 	if not any_available and tile.worker_id == -1:
-		_tile_popup.add_item("(no available worker)")
+		_tile_popup.add_item(tr("LABEL_NO_WORKER"))
 		_tile_popup.set_item_disabled(_tile_popup.item_count - 1, true)
 
 	_tile_popup.id_pressed.connect(_on_main_popup_selected)
@@ -274,35 +267,35 @@ func _on_tile_popup_selected(id: int) -> void:
 
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
 	_rebuild_resources()
-	_famine_label.text = "⚠ Famine — turn %d" % GameState.famine_turns if GameState.famine_turns > 0 else ""
+	_famine_label.text = tr("LABEL_FAMINE") % GameState.famine_turns if GameState.famine_turns > 0 else ""
 	_rebuild_lists()
 	_draw_map()
 
 func _rebuild_resources() -> void:
 	for child in _resources_section.get_children():
 		child.queue_free()
-	_add_label(_resources_section, "Turn %d" % GameState.turn)
+	_add_label(_resources_section, tr("LABEL_TURN") % GameState.turn)
 		
 	# Bloc énergie : tout sur une vue compacte
 	var elec_value: float = GameState.resources["electricity"]
 	var elec_parts: Array[String] = []
-	elec_parts.append("Reactor: %.0f" % GameState.reactor_output)
+	elec_parts.append(tr("LABEL_REACTOR") % GameState.reactor_output)
 	if GameState.synth_on:
-		elec_parts.append("synth: -%.0f" % GameState.SYNTH_ELECTRICITY_COST)
-	elec_parts.append("usable: %.1f" % elec_value)
-	_add_label(_resources_section, "Electricity — " + " | ".join(elec_parts))
+		elec_parts.append(tr("LABEL_SYNTH_COST") % GameState.SYNTH_ELECTRICITY_COST)
+	elec_parts.append(tr("LABEL_USABLE") % elec_value)
+	_add_label(_resources_section, tr("LABEL_ELEC_HEADER") + " | ".join(elec_parts))
 	if GameState.resources["heat"] > 0.0:
-		_add_label(_resources_section, "Heat (this turn): %.1f" % GameState.resources["heat"])
+		_add_label(_resources_section, tr("LABEL_HEAT") % GameState.resources["heat"])
 
 	var food_income := _aggregate_production("food")
 	var food_outcome: float = GameState.awake_count() * GameState.config.food_per_survivor
-	_add_label(_resources_section, "Food: %.1f   (+%.1f / -%.1f)" % [
+	_add_label(_resources_section, tr("LABEL_FOOD") % [
 		GameState.resources["food"], food_income, food_outcome])
 	var wood_income := _aggregate_production("wood")
-	_add_label(_resources_section, "Wood: %.1f   (+%.1f)" % [
+	_add_label(_resources_section, tr("LABEL_WOOD") % [
 		GameState.resources["wood"], wood_income])
 	var ore_income := _aggregate_production("ore")
-	_add_label(_resources_section, "Ore: %.1f   (+%.1f)" % [
+	_add_label(_resources_section, tr("LABEL_ORE") % [
 		GameState.resources["ore"], ore_income])
 
 	if _synth_checkbox != null:
@@ -328,14 +321,14 @@ func _rebuild_lists() -> void:
 		if s.awake:
 			_add_awake_row(s)
 			awake_count += 1
-	_awake_header.text = "Awake (%d)" % awake_count
+	_awake_header.text = tr("LABEL_AWAKE") % awake_count
 	if awake_count == 0:
-		_add_label(_awake_list, "  (nobody awake yet)")
+		_add_label(_awake_list, tr("LABEL_NOBODY_AWAKE"))
 
 	var sleeping_count := GameState.roster.sleeping_count()
-	_asleep_header.text = "Awakening pool — Still in cryo: %d" % sleeping_count
+	_asleep_header.text = tr("LABEL_ASLEEP_HEADER") % sleeping_count
 	if sleeping_count == 0:
-		_add_label(_asleep_list, "  (cryo bay is empty)")
+		_add_label(_asleep_list, tr("LABEL_CRYO_EMPTY"))
 	else:
 		for id in GameState.candidates:
 			var s: Survivor = GameState.roster.get_by_id(id)
@@ -349,11 +342,11 @@ func _add_awake_row(s: Survivor) -> void:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_awake_list.add_child(row)
 
-	var location := "in bunker" if s.tile_key == "" else "@ " + _format_tile_label(s.tile_key)
+	var location := tr("LABEL_IN_BUNKER") if s.tile_key == "" else tr("LABEL_AT_TILE") + _format_tile_label(s.tile_key)
 	var prod := _format_output(s)
 	var prod_suffix := "  →  " + prod if prod != "" else ""
 	var label := Label.new()
-	label.text = "  %s (%s) — %s — %s%s" % [s.name, s.profession, JOB_LABELS[s.job], location, prod_suffix]
+	label.text = "  %s (%s) — %s — %s%s" % [s.name, tr(s.profession), _job_label(s.job), location, prod_suffix]
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
 
@@ -370,19 +363,19 @@ func _format_tile_label(key: String) -> String:
 	var tile := GameState.hex_map.get_tile_by_key(key)
 	if tile == null:
 		return key
-	var type_name: String = HexTile.Type.keys()[tile.type].capitalize()
-	return "%s (%d,%d)" % [type_name, tile.q, tile.r]
+	var type_key: String = "TILE_TYPE_" + HexTile.Type.keys()[tile.type]
+	return "%s (%d,%d)" % [tr(type_key), tile.q, tile.r]
 
 func _add_candidate_row(s: Survivor) -> void:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_asleep_list.add_child(row)
 	var label := Label.new()
-	label.text = "  %s (%s)" % [s.name, s.profession]
+	label.text = "  %s (%s)" % [s.name, tr(s.profession)]
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(label)
 	var btn := Button.new()
-	btn.text = "Wake (-%.0f reserve)" % GameState.config.wake_cost
+	btn.text = tr("BTN_WAKE") % GameState.config.wake_cost
 	btn.disabled = not GameState.can_wake(s.id)
 	var sid := s.id
 	btn.pressed.connect(func(): GameState.wake(sid))
@@ -393,15 +386,16 @@ func _add_targeted_search_row() -> void:
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_asleep_list.add_child(row)
 	var label := Label.new()
-	label.text = "  Search for:"
+	label.text = tr("LABEL_SEARCH_FOR")
 	row.add_child(label)
 	_targeted_selector = OptionButton.new()
 	for prof in GameState.roster.all_professions():
-		_targeted_selector.add_item(prof)
+		_targeted_selector.add_item(tr(prof))
+		_targeted_selector.set_item_metadata(_targeted_selector.item_count - 1, prof)
 	_targeted_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(_targeted_selector)
 	var btn := Button.new()
-	btn.text = "Search (-%.0f reserve)" % GameState.config.wake_cost_targeted
+	btn.text = tr("BTN_SEARCH") % GameState.config.wake_cost_targeted
 	btn.disabled = not GameState.can_targeted_wake()
 	btn.pressed.connect(_on_targeted_search_pressed)
 	row.add_child(btn)
@@ -413,7 +407,7 @@ func _on_targeted_search_pressed() -> void:
 	var idx := _targeted_selector.selected
 	if idx < 0:
 		return
-	var profession := _targeted_selector.get_item_text(idx)
+	var profession: String = _targeted_selector.get_item_metadata(idx)
 	GameState.targeted_wake(profession)
 
 func _on_advance_pressed() -> void:
@@ -421,18 +415,18 @@ func _on_advance_pressed() -> void:
 
 func _on_targeted_wake_failed(profession: String) -> void:
 	if _targeted_status != null:
-		_targeted_status.text = "  No %s found in cryo. Reserve spent." % profession
+		_targeted_status.text = tr("SEARCH_FAILED") % profession
 
 func _on_run_ended(cause: GameState.EndCause) -> void:
 	var label := ""
 	match cause:
-		GameState.EndCause.REACTOR_DEAD: label = "Reactor dead"
-		GameState.EndCause.COLONY_LOST: label = "Colony lost"
+		GameState.EndCause.REACTOR_DEAD: label = tr("LABEL_REACTOR_DEAD")
+		GameState.EndCause.COLONY_LOST: label = tr("LABEL_COLONY_LOST")
 	var score = GameState.compute_score()
-	var message := "%s\n\nFinal score: %d / %d survivors saved." % [
-		label, score.survivors_saved, score.survivors_total]
-	_show_popup("Run ended", message)
-	_status_label.text = "Run ended — %s" % label
+	var message := tr("POPUP_FINAL_SCORE") % [
+		score.survivors_saved, score.survivors_total]
+	_show_popup(tr("POPUP_RUN_ENDED"), message)
+	_status_label.text = tr("LABEL_RUN_ENDED") % label
 	_advance_button.disabled = true
 
 func _on_synth_toggled(pressed: bool) -> void:
@@ -442,10 +436,15 @@ func _on_synth_toggled(pressed: bool) -> void:
 func _on_necrology_pressed() -> void:
 	var lines: Array[String] = []
 	for entry in GameState.necrology:
-		lines.append("Turn %d — %s (%s) — %s" % [
-			entry.turn, entry.name, entry.profession, entry.cause])
-	var content := "\n".join(lines) if not lines.is_empty() else "(no losses yet)"
-	_show_popup("Necrology", content)
+		var cause_label: String = entry.cause
+		if entry.cause == "switched off":
+			cause_label = tr("DEATH_SWITCHED_OFF")
+		elif entry.cause == "starved":
+			cause_label = tr("DEATH_STARVED")
+		lines.append(tr("POPUP_NECROLOGY_LINE") % [
+			entry.turn, entry.name, tr(entry.profession), cause_label])
+	var content := "\n".join(lines) if not lines.is_empty() else tr("POPUP_NECROLOGY_EMPTY")
+	_show_popup(tr("BTN_NECROLOGY"), content)
 
 func _show_popup(title: String, message: String) -> void:
 	var dialog := AcceptDialog.new()
@@ -460,9 +459,24 @@ func _on_nightly_deaths(events: Array) -> void:
 	var lines: Array[String] = []
 	for entry in events:
 		if entry.cause == "switched off":
-			lines.append("%s (%s) was switched off." % [entry.name, entry.profession])
+			lines.append(tr("DEATH_LINE_SWITCHED") % [entry.name, tr(entry.profession)])
 		elif entry.cause == "starved":
-			lines.append("%s (%s) starved to death." % [entry.name, entry.profession])
+			lines.append(tr("DEATH_LINE_STARVED") % [entry.name, tr(entry.profession)])
 		else:
-			lines.append("%s (%s) — %s." % [entry.name, entry.profession, entry.cause])
-	_show_popup("News from the bunker", "Last night:\n\n" + "\n".join(lines))
+			lines.append("%s (%s) — %s." % [entry.name, tr(entry.profession), entry.cause])
+	_show_popup(tr("POPUP_NEWS_TITLE"), tr("POPUP_NEWS_PREFIX") + "\n".join(lines))
+
+func _job_label(job: int) -> String:
+	match job:
+		GameState.Job.IDLE: return tr("JOB_IDLE")
+		GameState.Job.FARMER: return tr("JOB_FARMER")
+		GameState.Job.LUMBERJACK: return tr("JOB_LUMBERJACK")
+		GameState.Job.MINER: return tr("JOB_MINER")
+		_: return "?"
+
+func _resource_label(name: String) -> String:
+	match name:
+		"food": return tr("RESOURCE_FOOD")
+		"wood": return tr("RESOURCE_WOOD")
+		"ore": return tr("RESOURCE_ORE")
+		_: return name

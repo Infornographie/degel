@@ -20,9 +20,9 @@ const NAMES: Array[String] = [
 	"Yael", "Bao", "Ingrid", "Marek"
 ]
 const PROFESSIONS: Array[String] = [
-	"CEO", "Trader", "Game designer", "AI specialist", "Lawyer",
-	"Cosmetic surgeon", "Influencer", "Architect", "Lobbyist",
-	"Private pilot", "Banker", "Michelin-starred chef",
+	"PROF_CEO", "PROF_TRADER", "PROF_GAME_DESIGNER", "PROF_AI_SPECIALIST",
+	"PROF_LAWYER", "PROF_COSMETIC_SURGEON", "PROF_INFLUENCER", "PROF_ARCHITECT",
+	"PROF_LOBBYIST", "PROF_PRIVATE_PILOT", "PROF_BANKER", "PROF_CHEF",
 ]
 
 var survivors: Array[Survivor] = []

@@ -60,6 +60,7 @@ var roster: Roster
 var hex_map: HexMap
 var candidates: Array[int] = []
 
+# ── INITIALISATION ──
 func _ready() -> void:
 	config = load(CONFIG_PATH) as GameConfig
 	tile_config = load(TILE_CONFIG_PATH) as TileConfig
@@ -84,6 +85,7 @@ func _ready() -> void:
 	turn_advanced.emit(turn)
 	resources_changed.emit(resources)
 
+# ── ACCÈS SURVIVANTS ──
 func awake_count() -> int:
 	return roster.awake_count()
 
@@ -93,8 +95,7 @@ func awake_survivors() -> Array[Survivor]:
 func survivors() -> Array[Survivor]:
 	return roster.survivors
 
-## Réveille un survivant. Le coût est prélevé sur l'élec du tour.
-## Peut rendre l'élec négative — l'extinction se résoudra en fin de tour.
+# ── ACTIONS JOUEUR ──
 func wake(id: int) -> bool:
 	if is_over:
 		return false
@@ -169,6 +170,7 @@ func unassign_from_tile(survivor_id: int) -> bool:
 func set_synth(on: bool) -> void:
 	synth_on = on
 
+# ── BOUCLE DE TOUR ──
 func advance_turn() -> void:
 	if is_over:
 		return
@@ -229,6 +231,7 @@ func advance_turn() -> void:
 	turn_advanced.emit(turn)
 	resources_changed.emit(resources)
 
+# ── ÉNERGIE & EXTINCTION ──
 ## Tant que l'élec est négative, on tente d'éteindre des cryos pour combler.
 ## 1 mort certain par tranche de 10, +X% par point partiel.
 func _resolve_extinctions() -> void:
@@ -270,6 +273,7 @@ func _sleeping_survivors() -> Array[Survivor]:
 			result.append(s)
 	return result
 
+# ── PRODUCTION ──
 func _resolve_tile_production() -> void:
 	for tile in hex_map.tiles.values():
 		if tile.worker_id == -1:
@@ -307,6 +311,7 @@ func get_survivor_output(s: Survivor) -> Dictionary:
 			produced = 1.0
 	return { resource_name: produced }
 
+# ── FAMINE ──
 func _resolve_famine_deaths() -> void:
 	if not _deaths_triggered:
 		if famine_turns >= 2:
@@ -331,6 +336,7 @@ func _resolve_famine_deaths() -> void:
 			necrology.append(entry)
 			_deaths_this_turn.append(entry)
 
+# ── HELPERS INTERNES ──
 func _begin_turn() -> void:
 	_wakes_done_this_turn = 0
 	resources["electricity"] = reactor_output
@@ -355,6 +361,7 @@ func _refill_candidates() -> void:
 			candidates.append(id)
 		candidates_changed.emit()
 
+# ── RECHERCHE CIBLÉE ──
 func targeted_wake(profession: String) -> bool:
 	if is_over:
 		return false
@@ -382,6 +389,7 @@ func can_targeted_wake() -> bool:
 		return false
 	return true
 
+# ── SCORE ──
 func compute_score() -> Dictionary:
 	return {
 		"survivors_saved": awake_count(),

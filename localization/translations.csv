@@ -1,0 +1,68 @@
+keys,fr,en
+BTN_ADVANCE,Tour suivant,Advance one turn
+BTN_NECROLOGY,Nécrologie,Necrology
+BTN_WAKE,Réveiller (-%.0f élec),Wake (-%.0f reserve)
+BTN_SEARCH,Chercher (-%.0f élec),Search (-%.0f reserve)
+LABEL_SEARCH_FOR,  Chercher :,  Search for:
+LABEL_TURN,Tour %d,Turn %d
+LABEL_REACTOR,Réacteur : %.0f,Reactor: %.0f
+LABEL_SYNTH_COST,synthé : -%.0f,synth: -%.0f
+LABEL_USABLE,utilisable : %.1f,usable: %.1f
+LABEL_ELEC_HEADER,Électricité — ,Electricity — 
+LABEL_HEAT,Chaleur (ce tour) : %.1f,Heat (this turn): %.1f
+LABEL_FOOD,Nourriture : %.1f   (+%.1f / -%.1f),Food: %.1f   (+%.1f / -%.1f)
+LABEL_WOOD,Bois : %.1f   (+%.1f),Wood: %.1f   (+%.1f)
+LABEL_ORE,Minerai : %.1f   (+%.1f),Ore: %.1f   (+%.1f)
+LABEL_FAMINE,⚠ Famine — tour %d,⚠ Famine — turn %d
+LABEL_SYNTH_TOGGLE,Synthétiseur de nourriture  (−3 élec → +1 nourriture),Food synthesizer  (−3 elec → +1 food)
+LABEL_AWAKE,Éveillés (%d),Awake (%d)
+LABEL_NOBODY_AWAKE,  (personne d'éveillé pour le moment),  (nobody awake yet)
+LABEL_ASLEEP_HEADER,Pool d'éveil — Encore en cryo : %d,Awakening pool — Still in cryo: %d
+LABEL_CRYO_EMPTY,  (la cryo est vide),  (cryo bay is empty)
+LABEL_MAP_TITLE,Carte de surface (cliquez une tuile pour assigner),Surface map (click a tile to assign)
+LABEL_LEGEND_1,Légende : B/P/F/M = Bunker/Plaine/Forêt/Montagne,"Legend:  B/P/F/M = Bunker/Plains/Forest/Mountain"
+LABEL_LEGEND_2,Couleur = type de tuile,"Tile color = type, letter on tile = worker initial when assigned"
+LABEL_IN_BUNKER,au bunker,in bunker
+LABEL_AT_TILE,sur ,@ 
+LABEL_HERE,  (ici),  (here)
+LABEL_CURRENTLY_AT,  ← actuellement sur ,  ← currently @ 
+LABEL_CLEAR_TILE,Libérer la tuile,Clear tile
+LABEL_NO_WORKER,(aucun travailleur disponible),(no available worker)
+LABEL_RUN_ENDED,Partie terminée — %s,Run ended — %s
+LABEL_REACTOR_DEAD,Réacteur éteint,Reactor dead
+LABEL_COLONY_LOST,Colonie perdue,Colony lost
+POPUP_NEWS_TITLE,Nouvelles du bunker,News from the bunker
+POPUP_NEWS_PREFIX,"La nuit dernière :\n\n","Last night:\n\n"
+POPUP_RUN_ENDED,Partie terminée,Run ended
+POPUP_FINAL_SCORE,Score final : %d / %d survivants sauvés.,Final score: %d / %d survivors saved.
+POPUP_NECROLOGY_TITLE,Nécrologie,Necrology
+POPUP_NECROLOGY_EMPTY,(aucune perte pour le moment),(no losses yet)
+POPUP_NECROLOGY_LINE,Tour %d — %s (%s) — %s,Turn %d — %s (%s) — %s
+DEATH_SWITCHED_OFF,débranché(e),switched off
+DEATH_STARVED,mort(e) de faim,starved
+DEATH_LINE_SWITCHED,"%s (%s) a été débranché(e).","%s (%s) was switched off."
+DEATH_LINE_STARVED,"%s (%s) est mort(e) de faim.","%s (%s) starved to death."
+JOB_IDLE,Repos,Idle
+JOB_FARMER,Cultiver,Farmer
+JOB_LUMBERJACK,Bûcheronner,Lumberjack
+JOB_MINER,Miner,Miner
+TILE_TYPE_BUNKER,Bunker,Bunker
+TILE_TYPE_PLAINS,Plaine,Plains
+TILE_TYPE_FOREST,Forêt,Forest
+TILE_TYPE_MOUNTAIN,Montagne,Mountain
+SEARCH_FAILED,  Aucun(e) %s en cryo. Énergie perdue.,  No %s found in cryo. Reserve spent.
+RESOURCE_FOOD,Nourriture,Food
+RESOURCE_WOOD,Bois,Wood
+RESOURCE_ORE,Minerai,Ore
+PROF_CEO,PDG,CEO
+PROF_TRADER,Trader,Trader
+PROF_GAME_DESIGNER,Game designer,Game designer
+PROF_AI_SPECIALIST,Spécialiste IA,AI specialist
+PROF_LAWYER,Avocat,Lawyer
+PROF_COSMETIC_SURGEON,Chirurgien esthétique,Cosmetic surgeon
+PROF_INFLUENCER,Influenceur,Influencer
+PROF_ARCHITECT,Architecte,Architect
+PROF_LOBBYIST,Lobbyiste,Lobbyist
+PROF_PRIVATE_PILOT,Pilote privé,Private pilot
+PROF_BANKER,Banquier,Banker
+PROF_CHEF,Chef étoilé,Michelin-starred chef

@@ -19,6 +19,10 @@ config/icon="res://icon.svg"
 
 GameState="*uid://dp7u6eb2v12x2"
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://localization/translations.en.translation", "res://localization/translations.fr.translation")
+
 [physics]
 
 3d/physics_engine="Jolt Physics"
