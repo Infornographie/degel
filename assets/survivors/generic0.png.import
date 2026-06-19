@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://qvbihtec6464"
-path="res://.godot/imported/generic.png-6251c49307d9461f4ed247ca1d42d891.ctex"
+path="res://.godot/imported/generic0.png-d67867f4cf411830a543e9106fdc50e3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/survivors/generic.png"
-dest_files=["res://.godot/imported/generic.png-6251c49307d9461f4ed247ca1d42d891.ctex"]
+source_file="res://assets/survivors/generic0.png"
+dest_files=["res://.godot/imported/generic0.png-d67867f4cf411830a543e9106fdc50e3.ctex"]
 
 [params]
 

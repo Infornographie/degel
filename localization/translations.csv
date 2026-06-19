@@ -83,3 +83,5 @@ BTN_COMPUTER_CHAT,Discuter avec l'ordinateur,Talk to the computer
 LABEL_SYNTH_RUNNING,En marche,Running
 LABEL_SYNTH_INFO,−3 élec → +1 nourriture,−3 elec → +1 food
 POPUP_COMPUTER_TITLE,Ordinateur central,Central Computer
+BTN_WAKE_SHORT,Réveiller,Wake
+LABEL_STILL_IN_CRYO,File de rêveil : %d,Awakening pool: %d

@@ -21,8 +21,6 @@ var _resources_section: VBoxContainer
 var _famine_label: Label
 var _awake_header: Label
 var _awake_list: HBoxContainer
-var _asleep_header: Label
-var _asleep_list: VBoxContainer
 var _advance_button: Button
 var _status_label: Label
 var _map_container: Control
@@ -130,13 +128,7 @@ func _build_survivors_section(parent: VBoxContainer) -> void:
 	_awake_header = _add_label(parent, tr("LABEL_AWAKE") % 0)
 	_awake_list = HBoxContainer.new()
 	_awake_list.add_theme_constant_override("separation", 8)
-	_awake_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(_awake_list)
-	parent.add_child(HSeparator.new())
-	_asleep_header = _add_label(parent, tr("LABEL_ASLEEP_HEADER") % 0)
-	_asleep_list = VBoxContainer.new()
-	_asleep_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	parent.add_child(_asleep_list)
 
 func _build_buttons_section(parent: VBoxContainer) -> void:
 	_advance_button = Button.new()
@@ -200,26 +192,25 @@ func _draw_colony() -> void:
 		return
 	for child in _colony_grid.get_children():
 		child.queue_free()
-	# On range : starters d'abord (dans un ordre fixe), puis non-starters, puis vides
-	var ordered: Array[Building] = []
-	# Ordre voulu pour les starters : computer, synth, cryo (en bas à gauche du quadrant)
-	# Pour qu'ils tombent aux slots 8, 9, 10 d'une grille 4×3, on positionne en remplissant 0-7 d'abord
-	# On simplifie : on les met en début pour l'instant et on placera autrement si besoin
 	var computer: Building = _find_starter("computer")
 	var synth: Building = _find_starter("synthesizer")
 	var cryo: Building = _find_starter("cryo_room")
-	# Slots 0 à 7 = vides
-	for i in 8:
+	# Slots 0-3 : ligne du haut, tous vides
+	for i in 4:
 		_add_empty_slot()
-	# Slots 8, 9, 10 = bunker
+	# Slots 4-7 : computer, vide, vide, vide
 	if computer != null: _add_computer_slot(computer)
+	else: _add_empty_slot()
+	_add_empty_slot()
+	_add_empty_slot()
+	_add_empty_slot()
+	# Slots 8-11 : cryo, synth, vide, vide
+	if cryo != null: _add_cryo_slot(cryo)
 	else: _add_empty_slot()
 	if synth != null: _add_synth_slot(synth)
 	else: _add_empty_slot()
-	if cryo != null: _add_cryo_slot(cryo)
-	else: _add_empty_slot()
-	# Slot 11 = vide
-	_add_empty_slot()
+	for i in 2:
+		_add_empty_slot()
 
 func _find_starter(id: String) -> Building:
 	for b in GameState.buildings:
@@ -273,6 +264,13 @@ func _add_cryo_slot(b: Building) -> void:
 		if s == null:
 			continue
 		sprites_row.add_child(_make_candidate_card(s))
+	# Compteur des endormis restants
+	var count_label := Label.new()
+	count_label.text = tr("LABEL_STILL_IN_CRYO") % GameState.roster.sleeping_count()
+	count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count_label.add_theme_font_size_override("font_size", 12)
+	count_label.modulate = Color(0.7, 0.7, 0.7)
+	vbox.add_child(count_label)
 
 func _new_slot_panel() -> PanelContainer:
 	var panel := PanelContainer.new()
@@ -537,8 +535,6 @@ func _aggregate_production(resource_name: String) -> float:
 func _rebuild_lists() -> void:
 	for child in _awake_list.get_children():
 		child.queue_free()
-	for child in _asleep_list.get_children():
-		child.queue_free()
 	var awake_count := 0
 	for s in GameState.survivors():
 		if s.awake:
@@ -547,8 +543,6 @@ func _rebuild_lists() -> void:
 	_awake_header.text = tr("LABEL_AWAKE") % awake_count
 	if awake_count == 0:
 		_add_label(_awake_list, tr("LABEL_NOBODY_AWAKE"))
-	var sleeping_count: int = GameState.roster.sleeping_count()
-	_asleep_header.text = tr("LABEL_ASLEEP_HEADER") % sleeping_count
 
 func _add_awake_row(s: Survivor) -> void:
 	var location := tr("LABEL_IN_BUNKER") if s.tile_key == "" else tr("LABEL_AT_TILE") + _format_tile_label(s.tile_key)
@@ -653,17 +647,26 @@ func _make_candidate_card(s: Survivor) -> Control:
 		tr(s.profession),
 		tr("BTN_WAKE") % GameState.config.wake_cost,
 	]
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 2)
+	# Sprite couché (rotation -45°)
 	var sprite := _make_survivor_sprite(s, tooltip)
-	# Clic = wake direct
-	if GameState.can_wake(s.id):
-		var sid := s.id
-		sprite.gui_input.connect(func(event: InputEvent):
-			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				GameState.wake(sid))
-		sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	else:
-		sprite.modulate = Color(0.5, 0.5, 0.5)  # grisé si pas wake-able
-	return sprite
+	sprite.pivot_offset = sprite.custom_minimum_size * 0.5
+	sprite.rotation = deg_to_rad(-75)
+	var sprite_wrap := Control.new()
+	sprite_wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	sprite_wrap.custom_minimum_size = sprite.custom_minimum_size
+	sprite_wrap.add_child(sprite)
+	vbox.add_child(sprite_wrap)
+	# Bouton wake dessous
+	var btn := Button.new()
+	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	btn.text = tr("BTN_WAKE_SHORT")
+	btn.disabled = not GameState.can_wake(s.id)
+	var sid := s.id
+	btn.pressed.connect(func(): GameState.wake(sid))
+	vbox.add_child(btn)
+	return vbox
 
 func _on_computer_pressed() -> void:
 	var dialog := AcceptDialog.new()
@@ -706,15 +709,15 @@ func _make_label(text: String) -> Label:
 	return label
 
 const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic.png"
-const SURVIVOR_SPRITE_SCALE := 3
+const SURVIVOR_SPRITE_SCALE := 4
 
-func _make_survivor_sprite(s: Survivor, tooltip_text: String) -> TextureRect:
+func _make_survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
 	var sprite := TextureRect.new()
-	sprite.texture = load(SURVIVOR_SPRITE_PATH)
+	sprite.texture = load("res://assets/survivors/generic%d.png" % s.sprite_variant)
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pour pixel art net
 	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
 	sprite.custom_minimum_size = tex_size * SURVIVOR_SPRITE_SCALE
-	sprite.tooltip_text = tooltip_text
+	sprite.tooltip_text = sprite_tooltip
 	sprite.mouse_filter = Control.MOUSE_FILTER_STOP  # pour que le hover/clic marche
 	return sprite
