@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://ijok7a07khuv"]
+
+[ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_kuksc"]
+
+[resource]
+script = ExtResource("1_kuksc")
+id = "computer"
+name_key = "BUILDING_COMPUTER"
+family = 1
+is_starter = true
+metadata/_custom_type_script = "uid://djgwy70yusm4w"

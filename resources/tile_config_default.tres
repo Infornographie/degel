@@ -1,6 +1,6 @@
 [gd_resource type="Resource" script_class="TileConfig" format=3 uid="uid://bbacgi4l4ac8s"]
 
-[ext_resource type="Script" uid="uid://ob78017rha5x" path="res://systems/tile_config.gd" id="1_s4xpt"]
+[ext_resource type="Script" uid="uid://ob78017rha5x" path="res://systems/core/tile_config.gd" id="1_s4xpt"]
 
 [resource]
 script = ExtResource("1_s4xpt")

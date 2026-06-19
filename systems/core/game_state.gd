@@ -6,8 +6,8 @@ var production_system: ProductionSystem
 enum EndCause { REACTOR_DEAD, COLONY_LOST }
 enum Job { IDLE, FARMER, LUMBERJACK, MINER }
 
-const CONFIG_PATH := "res://systems/game_config_default.tres"
-const TILE_CONFIG_PATH := "res://systems/tile_config_default.tres"
+const CONFIG_PATH := "res://resources/game_config_default.tres"
+const TILE_CONFIG_PATH := "res://resources/tile_config_default.tres"
 
 signal turn_advanced(turn: int)
 signal resources_changed(resources: Dictionary)
@@ -33,6 +33,10 @@ var reactor_output: float
 
 # --- Ressources : flux et stocks ---
 var resources: Dictionary = {}
+
+# --- Buildings ---
+var building_registry: BuildingRegistry
+var buildings: Array[Building] = []
 
 # --- Nécrologie (pour 5f) ---
 var _deaths_this_turn: Array = []
@@ -77,6 +81,8 @@ func _ready() -> void:
 	roster = Roster.new(config.roster_size)
 	hex_map = HexMap.new(2, tile_config)
 	production_system = ProductionSystem.new(hex_map, roster)
+	building_registry = BuildingRegistry.new()
+	_init_starter_buildings()
 	_refill_candidates()
 	_begin_turn()
 	turn_advanced.emit(turn)
@@ -361,3 +367,10 @@ func compute_score() -> Dictionary:
 		"survivors_saved": awake_count(),
 		"survivors_total": roster.initial_size,
 	}
+
+#
+func _init_starter_buildings() -> void:
+	for building_config in building_registry.starters():
+		var b := Building.new(building_config)
+		b.complete_construction()
+		buildings.append(b)

@@ -66,3 +66,6 @@ PROF_LOBBYIST,Lobbyiste,Lobbyist
 PROF_PRIVATE_PILOT,Pilote privé,Private pilot
 PROF_BANKER,Banquier,Banker
 PROF_CHEF,Chef étoilé,Michelin-starred chef
+BUILDING_CRYO_ROOM,Salle de cryogénisation,Cryo room
+BUILDING_COMPUTER,Ordinateur central,Main computer
+BUILDING_SYNTHESIZER,Synthétiseur de nourriture,Food synthesizer
