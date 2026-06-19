@@ -53,6 +53,16 @@ func _build_ui() -> void:
 	split.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	split.add_theme_constant_override("separation", 16)
 	add_child(split)
+	
+	# Bouton quit en haut à droite
+	var quit_btn := Button.new()
+	quit_btn.text = "✕"
+	quit_btn.add_theme_font_size_override("font_size", 20)
+	quit_btn.custom_minimum_size = Vector2(40, 40)
+	quit_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	quit_btn.position = Vector2(-50, 10)
+	quit_btn.pressed.connect(get_tree().quit)
+	add_child(quit_btn)
 
 	var left_scroll := ScrollContainer.new()
 	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -169,7 +179,7 @@ func _on_tile_clicked(event: InputEvent, tile_key: String) -> void:
 
 func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 	_popup_tile_key = tile_key
-	var tile := GameState.hex_map.get_tile_by_key(tile_key)
+	var tile: HexTile = GameState.hex_map.get_tile_by_key(tile_key)
 	if tile == null:
 		return
 
@@ -201,7 +211,7 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		var jobs: Array[int] = [GameState.Job.FARMER, GameState.Job.LUMBERJACK, GameState.Job.MINER]
 		for job_id in jobs:
 			var yield_val: float = tile.yields.get(job_id, 0.0)
-			var resource_name: String = GameState.JOB_RESOURCE.get(job_id, "")
+			var resource_name: String = ProductionSystem.JOB_RESOURCE.get(job_id, "")
 			var label_text := "%s  (+%.0f %s)" % [_job_label(job_id), yield_val, _resource_label(resource_name)]
 			sub.add_item(label_text)
 			sub.set_item_metadata(sub.item_count - 1, {"survivor_id": s.id, "job": job_id})
@@ -233,7 +243,7 @@ func _on_main_popup_selected(index: int) -> void:
 	if meta == null:
 		return
 	if meta.has("action") and meta["action"] == "clear":
-		var tile := GameState.hex_map.get_tile_by_key(_popup_tile_key)
+		var tile: HexTile = GameState.hex_map.get_tile_by_key(_popup_tile_key)
 		if tile != null and tile.worker_id != -1:
 			GameState.unassign_from_tile(tile.worker_id)
 	_popup_tile_key = ""
@@ -254,7 +264,7 @@ func _on_tile_popup_selected(id: int) -> void:
 		return
 	if id == -1:
 		# Clear : on retire l'occupant courant
-		var tile := GameState.hex_map.get_tile_by_key(_popup_tile_key)
+		var tile: HexTile = GameState.hex_map.get_tile_by_key(_popup_tile_key)
 		if tile != null and tile.worker_id != -1:
 			GameState.unassign_from_tile(tile.worker_id)
 	elif id == -2:
@@ -325,7 +335,7 @@ func _rebuild_lists() -> void:
 	if awake_count == 0:
 		_add_label(_awake_list, tr("LABEL_NOBODY_AWAKE"))
 
-	var sleeping_count := GameState.roster.sleeping_count()
+	var sleeping_count: int = GameState.roster.sleeping_count()
 	_asleep_header.text = tr("LABEL_ASLEEP_HEADER") % sleeping_count
 	if sleeping_count == 0:
 		_add_label(_asleep_list, tr("LABEL_CRYO_EMPTY"))
@@ -360,7 +370,7 @@ func _format_output(s: Survivor) -> String:
 	return ", ".join(parts)
 
 func _format_tile_label(key: String) -> String:
-	var tile := GameState.hex_map.get_tile_by_key(key)
+	var tile: HexTile = GameState.hex_map.get_tile_by_key(key)
 	if tile == null:
 		return key
 	var type_key: String = "TILE_TYPE_" + HexTile.Type.keys()[tile.type]
@@ -474,9 +484,9 @@ func _job_label(job: int) -> String:
 		GameState.Job.MINER: return tr("JOB_MINER")
 		_: return "?"
 
-func _resource_label(name: String) -> String:
-	match name:
+func _resource_label(resource_name: String) -> String:
+	match resource_name:
 		"food": return tr("RESOURCE_FOOD")
 		"wood": return tr("RESOURCE_WOOD")
 		"ore": return tr("RESOURCE_ORE")
-		_: return name
+		_: return resource_name

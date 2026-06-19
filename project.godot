@@ -19,6 +19,12 @@ config/icon="res://icon.svg"
 
 GameState="*uid://dp7u6eb2v12x2"
 
+[display]
+
+window/size/viewport_width=1920
+window/size/viewport_height=1080
+window/size/mode=3
+
 [internationalization]
 
 locale/translations=PackedStringArray("res://localization/translations.en.translation", "res://localization/translations.fr.translation")

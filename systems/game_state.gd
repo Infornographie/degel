@@ -1,17 +1,13 @@
 extends Node
 ## GameState — cœur de la simulation (autoload).
 
+var production_system: ProductionSystem
+
 enum EndCause { REACTOR_DEAD, COLONY_LOST }
 enum Job { IDLE, FARMER, LUMBERJACK, MINER }
 
 const CONFIG_PATH := "res://systems/game_config_default.tres"
 const TILE_CONFIG_PATH := "res://systems/tile_config_default.tres"
-
-const JOB_RESOURCE := {
-	Job.FARMER: "food",
-	Job.LUMBERJACK: "wood",
-	Job.MINER: "ore",
-}
 
 signal turn_advanced(turn: int)
 signal resources_changed(resources: Dictionary)
@@ -80,6 +76,7 @@ func _ready() -> void:
 	}
 	roster = Roster.new(config.roster_size)
 	hex_map = HexMap.new(2, tile_config)
+	production_system = ProductionSystem.new(hex_map, roster)
 	_refill_candidates()
 	_begin_turn()
 	turn_advanced.emit(turn)
@@ -275,41 +272,10 @@ func _sleeping_survivors() -> Array[Survivor]:
 
 # ── PRODUCTION ──
 func _resolve_tile_production() -> void:
-	for tile in hex_map.tiles.values():
-		if tile.worker_id == -1:
-			continue
-		var s: Survivor = roster.get_by_id(tile.worker_id)
-		if s == null or not s.awake:
-			continue
-		var raw: float = tile.yields.get(s.job, 0.0)
-		if raw <= 0.0:
-			continue
-		var resource_name: String = JOB_RESOURCE.get(s.job, "")
-		if resource_name == "":
-			continue
-		var produced: float = raw
-		if production_multiplier < 1.0:
-			produced = floor(raw * production_multiplier)
-			if raw >= 1.0 and produced < 1.0:
-				produced = 1.0
-		resources[resource_name] = resources.get(resource_name, 0.0) + produced
+	production_system.resolve(resources, production_multiplier)
 
 func get_survivor_output(s: Survivor) -> Dictionary:
-	if s.tile_key == "":
-		return {}
-	var tile := hex_map.get_tile_by_key(s.tile_key)
-	if tile == null:
-		return {}
-	var raw: float = tile.yields.get(s.job, 0.0)
-	var resource_name: String = JOB_RESOURCE.get(s.job, "")
-	if resource_name == "":
-		return {}
-	var produced: float = raw
-	if production_multiplier < 1.0:
-		produced = floor(raw * production_multiplier)
-		if raw >= 1.0 and produced < 1.0:
-			produced = 1.0
-	return { resource_name: produced }
+	return production_system.get_survivor_output(s, production_multiplier)
 
 # ── FAMINE ──
 func _resolve_famine_deaths() -> void:
