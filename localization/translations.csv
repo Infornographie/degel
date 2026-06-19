@@ -69,3 +69,12 @@ PROF_CHEF,Chef étoilé,Michelin-starred chef
 BUILDING_CRYO_ROOM,Salle de cryogénisation,Cryo room
 BUILDING_COMPUTER,Ordinateur central,Main computer
 BUILDING_SYNTHESIZER,Synthétiseur de nourriture,Food synthesizer
+LABEL_COLONY_TITLE,Colonie,Colony
+LABEL_EMPTY_SLOT,(emplacement libre),(empty slot)
+BUILDING_FAMILY_TRANSFORMATION,⚙ transformation,⚙ transformation
+BUILDING_FAMILY_FUNCTION,◇ fonction,◇ function
+BUILDING_CRYO_ROOM,Cryogénisation,Cryo Room
+BUILDING_COMPUTER,Ordinateur central,Central Computer
+BUILDING_SYNTHESIZER,Synthétiseur,Synthesizer
+BTN_QUIT,Quitter,Quit
+BTN_TOGGLE_LANG,Switch to english,Passer en français

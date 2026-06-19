@@ -33,6 +33,8 @@ var _popup_tile_key: String = ""
 # id dans le sous-menu (encodé : survivor_id * 100 + job_id) → (survivor_id, job_id)
 var _popup_submenus: Array[PopupMenu] = []
 var _synth_checkbox: CheckBox
+var _colony_grid: GridContainer
+const COLONY_SLOTS: int = 12
 
 func _ready() -> void:
 	_build_ui()
@@ -45,44 +47,85 @@ func _ready() -> void:
 	GameState.targeted_wake_failed.connect(_on_targeted_wake_failed)
 	GameState.run_ended.connect(_on_run_ended)
 	GameState.nightly_deaths.connect(_on_nightly_deaths)
+	# On cache l'UI le temps que le layout se calcule
+	modulate.a = 0.0
+	await get_tree().process_frame
 	_refresh()
+	modulate.a = 1.0
 
 func _build_ui() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var split := HBoxContainer.new()
-	split.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	split.add_theme_constant_override("separation", 16)
-	add_child(split)
-	
-	# Bouton quit en haut à droite
-	var quit_btn := Button.new()
-	quit_btn.text = "✕"
-	quit_btn.add_theme_font_size_override("font_size", 20)
-	quit_btn.custom_minimum_size = Vector2(40, 40)
-	quit_btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	quit_btn.position = Vector2(-50, 10)
-	quit_btn.pressed.connect(get_tree().quit)
-	add_child(quit_btn)
 
-	var left_scroll := ScrollContainer.new()
-	left_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left_scroll.size_flags_stretch_ratio = 0.6
-	left_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	split.add_child(left_scroll)
+	# Split vertical principal : top (colony + map) / bottom (data & buttons)
+	var main_vbox := VBoxContainer.new()
+	main_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	main_vbox.add_theme_constant_override("separation", 12)
+	add_child(main_vbox)
 
-	var left := VBoxContainer.new()
-	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	left.add_theme_constant_override("separation", 12)
-	left_scroll.add_child(left)
-	_build_left_panel(left)
+	# --- Rang du haut : colony + map ---
+	var top_row := HBoxContainer.new()
+	top_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	top_row.size_flags_stretch_ratio = 0.70
+	top_row.add_theme_constant_override("separation", 12)
+	main_vbox.add_child(top_row)
 
-	var right := VBoxContainer.new()
-	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right.size_flags_stretch_ratio = 0.4
-	split.add_child(right)
-	_build_map_panel(right)
+	# Colony à gauche du rang du haut
+	var colony_panel := VBoxContainer.new()
+	colony_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	colony_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	colony_panel.size_flags_stretch_ratio = 0.60
+	top_row.add_child(colony_panel)
+	_build_colony_panel(colony_panel)
 
-func _build_left_panel(parent: VBoxContainer) -> void:
+	# Map à droite du rang du haut
+	var map_panel := VBoxContainer.new()
+	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_panel.size_flags_stretch_ratio = 0.40
+	top_row.add_child(map_panel)
+	_build_map_panel(map_panel)
+
+	# --- Rang du bas : data & buttons ---
+	var bottom_row := HBoxContainer.new()
+	bottom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bottom_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bottom_row.size_flags_stretch_ratio = 0.30
+	bottom_row.add_theme_constant_override("separation", 16)
+	main_vbox.add_child(bottom_row)
+
+	# Zone ressources
+	var resources_scroll := ScrollContainer.new()
+	resources_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	resources_scroll.size_flags_stretch_ratio = 0.30
+	resources_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	bottom_row.add_child(resources_scroll)
+	var resources_vbox := VBoxContainer.new()
+	resources_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	resources_scroll.add_child(resources_vbox)
+	_build_resources_section(resources_vbox)
+
+	# Zone survivants
+	var survivors_scroll := ScrollContainer.new()
+	survivors_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	survivors_scroll.size_flags_stretch_ratio = 0.50
+	survivors_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	bottom_row.add_child(survivors_scroll)
+	var survivors_vbox := VBoxContainer.new()
+	survivors_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	survivors_vbox.add_theme_constant_override("separation", 8)
+	survivors_scroll.add_child(survivors_vbox)
+	_build_survivors_section(survivors_vbox)
+
+	# Zone boutons (advance, necrology, quit)
+	var buttons_vbox := VBoxContainer.new()
+	buttons_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buttons_vbox.size_flags_stretch_ratio = 0.20
+	buttons_vbox.add_theme_constant_override("separation", 8)
+	bottom_row.add_child(buttons_vbox)
+	_build_buttons_section(buttons_vbox)
+
+func _build_resources_section(parent: VBoxContainer) -> void:
 	_resources_section = VBoxContainer.new()
 	parent.add_child(_resources_section)
 	_synth_checkbox = CheckBox.new()
@@ -90,29 +133,55 @@ func _build_left_panel(parent: VBoxContainer) -> void:
 	_synth_checkbox.toggled.connect(_on_synth_toggled)
 	parent.add_child(_synth_checkbox)
 	_famine_label = _add_label(parent, "")
-	parent.add_child(HSeparator.new())
-	_awake_header = _add_label(parent, "Awake (0)")
+
+func _build_survivors_section(parent: VBoxContainer) -> void:
+	_awake_header = _add_label(parent, tr("LABEL_AWAKE") % 0)
 	_awake_list = VBoxContainer.new()
 	_awake_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(_awake_list)
 	parent.add_child(HSeparator.new())
-	_asleep_header = _add_label(parent, "Asleep (0)")
+	_asleep_header = _add_label(parent, tr("LABEL_ASLEEP_HEADER") % 0)
 	_asleep_list = VBoxContainer.new()
 	_asleep_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(_asleep_list)
-	parent.add_child(HSeparator.new())
+
+func _build_buttons_section(parent: VBoxContainer) -> void:
 	_advance_button = Button.new()
 	_advance_button.text = tr("BTN_ADVANCE")
 	_advance_button.pressed.connect(_on_advance_pressed)
 	parent.add_child(_advance_button)
-	_status_label = _add_label(parent, "")
 	var necro_btn := Button.new()
 	necro_btn.text = tr("BTN_NECROLOGY")
 	necro_btn.pressed.connect(_on_necrology_pressed)
 	parent.add_child(necro_btn)
+	var lang_btn := Button.new()
+	lang_btn.text = tr("BTN_TOGGLE_LANG")
+	lang_btn.pressed.connect(_on_toggle_lang_pressed)
+	parent.add_child(lang_btn)
+	var quit_btn := Button.new()
+	quit_btn.text = tr("BTN_QUIT")
+	quit_btn.pressed.connect(get_tree().quit)
+	parent.add_child(quit_btn)
+	_status_label = _add_label(parent, "")
+
+func _on_toggle_lang_pressed() -> void:
+	var current := TranslationServer.get_locale()
+	var new_locale := "en" if current.begins_with("fr") else "fr"
+	TranslationServer.set_locale(new_locale)
+	_rebuild_ui()
+
+func _rebuild_ui() -> void:
+	for child in get_children():
+		child.queue_free()
+	modulate.a = 0.0
+	_build_ui()
+	await get_tree().process_frame
+	_refresh()
+	modulate.a = 1.0
 
 func _build_map_panel(parent: VBoxContainer) -> void:
-	_add_label(parent, tr("LABEL_MAP_TITLE"))
+	var title := _add_label(parent, tr("LABEL_MAP_TITLE"))
+	title.add_theme_font_size_override("font_size", 16)
 	_map_container = Control.new()
 	_map_container.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	_map_container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -121,6 +190,72 @@ func _build_map_panel(parent: VBoxContainer) -> void:
 	parent.add_child(HSeparator.new())
 	_add_label(parent, tr("LABEL_LEGEND_1"))
 	_add_label(parent, tr("LABEL_LEGEND_2"))
+
+func _build_colony_panel(parent: VBoxContainer) -> void:
+	var title := _add_label(parent, tr("LABEL_COLONY_TITLE"))
+	title.add_theme_font_size_override("font_size", 16)
+	_colony_grid = GridContainer.new()
+	_colony_grid.columns = 4
+	_colony_grid.add_theme_constant_override("h_separation", 8)
+	_colony_grid.add_theme_constant_override("v_separation", 8)
+	_colony_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_colony_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(_colony_grid)
+
+func _draw_colony() -> void:
+	if _colony_grid == null:
+		return
+	for child in _colony_grid.get_children():
+		child.queue_free()
+	# Les starter buildings d'abord, puis les autres
+	var occupied: Array[Building] = []
+	for b in GameState.buildings:
+		if b.config.is_starter:
+			occupied.append(b)
+	for b in GameState.buildings:
+		if not b.config.is_starter:
+			occupied.append(b)
+	for i in COLONY_SLOTS:
+		if i < occupied.size():
+			_add_building_slot(occupied[i])
+		else:
+			_add_empty_slot()
+
+func _add_building_slot(b: Building) -> void:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = Vector2(140, 100)
+	_colony_grid.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	panel.add_child(vbox)
+	var name_label := Label.new()
+	name_label.text = tr(b.config.name_key)
+	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	name_label.add_theme_font_size_override("font_size", 14)
+	vbox.add_child(name_label)
+	var family_label := Label.new()
+	match b.config.family:
+		BuildingConfig.Family.TRANSFORMATION: family_label.text = tr("BUILDING_FAMILY_TRANSFORMATION")
+		BuildingConfig.Family.FUNCTION: family_label.text = tr("BUILDING_FAMILY_FUNCTION")
+	family_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	family_label.add_theme_font_size_override("font_size", 10)
+	family_label.modulate = Color(0.7, 0.7, 0.7)
+	vbox.add_child(family_label)
+
+func _add_empty_slot() -> void:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = Vector2(140, 100)
+	panel.modulate = Color(1, 1, 1, 0.3)
+	_colony_grid.add_child(panel)
+	var label := Label.new()
+	label.text = tr("LABEL_EMPTY_SLOT")
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	panel.add_child(label)
 
 func _add_label(parent: Node, text: String) -> Label:
 	var label := Label.new()
@@ -280,6 +415,7 @@ func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
 	_famine_label.text = tr("LABEL_FAMINE") % GameState.famine_turns if GameState.famine_turns > 0 else ""
 	_rebuild_lists()
 	_draw_map()
+	_draw_colony()
 
 func _rebuild_resources() -> void:
 	for child in _resources_section.get_children():
