@@ -20,21 +20,18 @@ const TILE_COLORS := {
 var _resources_section: VBoxContainer
 var _famine_label: Label
 var _awake_header: Label
-var _awake_list: VBoxContainer
+var _awake_list: HBoxContainer
 var _asleep_header: Label
 var _asleep_list: VBoxContainer
 var _advance_button: Button
 var _status_label: Label
 var _map_container: Control
-var _targeted_selector: OptionButton
-var _targeted_status: Label
 var _tile_popup: PopupMenu
 var _popup_tile_key: String = ""
 # id dans le sous-menu (encodé : survivor_id * 100 + job_id) → (survivor_id, job_id)
 var _popup_submenus: Array[PopupMenu] = []
-var _synth_checkbox: CheckBox
 var _colony_grid: GridContainer
-const COLONY_SLOTS: int = 12
+const COLONY_SLOTS: int = 8
 
 func _ready() -> void:
 	_build_ui()
@@ -44,7 +41,6 @@ func _ready() -> void:
 	GameState.survivor_assigned.connect(_refresh)
 	GameState.candidates_changed.connect(_refresh)
 	GameState.tile_assignment_changed.connect(_refresh)
-	GameState.targeted_wake_failed.connect(_on_targeted_wake_failed)
 	GameState.run_ended.connect(_on_run_ended)
 	GameState.nightly_deaths.connect(_on_nightly_deaths)
 	# On cache l'UI le temps que le layout se calcule
@@ -128,15 +124,12 @@ func _build_ui() -> void:
 func _build_resources_section(parent: VBoxContainer) -> void:
 	_resources_section = VBoxContainer.new()
 	parent.add_child(_resources_section)
-	_synth_checkbox = CheckBox.new()
-	_synth_checkbox.text = tr("LABEL_SYNTH_TOGGLE")
-	_synth_checkbox.toggled.connect(_on_synth_toggled)
-	parent.add_child(_synth_checkbox)
 	_famine_label = _add_label(parent, "")
 
 func _build_survivors_section(parent: VBoxContainer) -> void:
 	_awake_header = _add_label(parent, tr("LABEL_AWAKE") % 0)
-	_awake_list = VBoxContainer.new()
+	_awake_list = HBoxContainer.new()
+	_awake_list.add_theme_constant_override("separation", 8)
 	_awake_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(_awake_list)
 	parent.add_child(HSeparator.new())
@@ -207,17 +200,105 @@ func _draw_colony() -> void:
 		return
 	for child in _colony_grid.get_children():
 		child.queue_free()
-	# Les starter buildings d'abord, puis les autres
-	var occupied: Array[Building] = []
+	# On range : starters d'abord (dans un ordre fixe), puis non-starters, puis vides
+	var ordered: Array[Building] = []
+	# Ordre voulu pour les starters : computer, synth, cryo (en bas à gauche du quadrant)
+	# Pour qu'ils tombent aux slots 8, 9, 10 d'une grille 4×3, on positionne en remplissant 0-7 d'abord
+	# On simplifie : on les met en début pour l'instant et on placera autrement si besoin
+	var computer: Building = _find_starter("computer")
+	var synth: Building = _find_starter("synthesizer")
+	var cryo: Building = _find_starter("cryo_room")
+	# Slots 0 à 7 = vides
+	for i in 8:
+		_add_empty_slot()
+	# Slots 8, 9, 10 = bunker
+	if computer != null: _add_computer_slot(computer)
+	else: _add_empty_slot()
+	if synth != null: _add_synth_slot(synth)
+	else: _add_empty_slot()
+	if cryo != null: _add_cryo_slot(cryo)
+	else: _add_empty_slot()
+	# Slot 11 = vide
+	_add_empty_slot()
+
+func _find_starter(id: String) -> Building:
 	for b in GameState.buildings:
-		if b.config.is_starter:
-			occupied.append(b)
+		if b.config.id == id:
+			return b
+	return null
+
+func _add_computer_slot(b: Building) -> void:
+	var panel := _new_slot_panel()
+	_colony_grid.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	panel.add_child(vbox)
+	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	var btn := Button.new()
+	btn.text = tr("BTN_COMPUTER_INTERACT")
+	btn.pressed.connect(_on_computer_pressed)
+	vbox.add_child(btn)
+
+func _add_synth_slot(b: Building) -> void:
+	var panel := _new_slot_panel()
+	_colony_grid.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	panel.add_child(vbox)
+	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	var checkbox := CheckBox.new()
+	checkbox.text = tr("LABEL_SYNTH_RUNNING")
+	checkbox.set_pressed_no_signal(GameState.synth_on)
+	checkbox.toggled.connect(_on_synth_toggled)
+	vbox.add_child(checkbox)
+	var info := Label.new()
+	info.text = tr("LABEL_SYNTH_INFO")
+	info.add_theme_font_size_override("font_size", 9)
+	info.modulate = Color(0.7, 0.7, 0.7)
+	vbox.add_child(info)
+
+func _add_cryo_slot(b: Building) -> void:
+	var panel := _new_slot_panel()
+	_colony_grid.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	panel.add_child(vbox)
+	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	var sprites_row := HBoxContainer.new()
+	sprites_row.add_theme_constant_override("separation", 4)
+	sprites_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(sprites_row)
+	for cid in GameState.candidates:
+		var s: Survivor = GameState.roster.get_by_id(cid)
+		if s == null:
+			continue
+		sprites_row.add_child(_make_candidate_card(s))
+
+func _new_slot_panel() -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = Vector2(140, 100)
+	return panel
+
+func _slot_title(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 13)
+	return label
+
+func _draw_colony_slots() -> void:
+	for child in _colony_grid.get_children():
+		child.queue_free()
+	# Bâtiments non-starter à afficher dans la grille libre
+	var non_starter: Array[Building] = []
 	for b in GameState.buildings:
 		if not b.config.is_starter:
-			occupied.append(b)
+			non_starter.append(b)
 	for i in COLONY_SLOTS:
-		if i < occupied.size():
-			_add_building_slot(occupied[i])
+		if i < non_starter.size():
+			_add_building_slot(non_starter[i])
 		else:
 			_add_empty_slot()
 
@@ -444,9 +525,6 @@ func _rebuild_resources() -> void:
 	_add_label(_resources_section, tr("LABEL_ORE") % [
 		GameState.resources["ore"], ore_income])
 
-	if _synth_checkbox != null:
-		_synth_checkbox.set_pressed_no_signal(GameState.synth_on)
-
 func _aggregate_production(resource_name: String) -> float:
 	var total: float = 0.0
 	for s in GameState.awake_survivors():
@@ -461,7 +539,6 @@ func _rebuild_lists() -> void:
 		child.queue_free()
 	for child in _asleep_list.get_children():
 		child.queue_free()
-
 	var awake_count := 0
 	for s in GameState.survivors():
 		if s.awake:
@@ -470,31 +547,22 @@ func _rebuild_lists() -> void:
 	_awake_header.text = tr("LABEL_AWAKE") % awake_count
 	if awake_count == 0:
 		_add_label(_awake_list, tr("LABEL_NOBODY_AWAKE"))
-
 	var sleeping_count: int = GameState.roster.sleeping_count()
 	_asleep_header.text = tr("LABEL_ASLEEP_HEADER") % sleeping_count
-	if sleeping_count == 0:
-		_add_label(_asleep_list, tr("LABEL_CRYO_EMPTY"))
-	else:
-		for id in GameState.candidates:
-			var s: Survivor = GameState.roster.get_by_id(id)
-			if s != null:
-				_add_candidate_row(s)
-		_add_label(_asleep_list, "")
-		_add_targeted_search_row()
 
 func _add_awake_row(s: Survivor) -> void:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_awake_list.add_child(row)
-
 	var location := tr("LABEL_IN_BUNKER") if s.tile_key == "" else tr("LABEL_AT_TILE") + _format_tile_label(s.tile_key)
 	var prod := _format_output(s)
-	var prod_suffix := "  →  " + prod if prod != "" else ""
-	var label := Label.new()
-	label.text = "  %s (%s) — %s — %s%s" % [s.name, tr(s.profession), _job_label(s.job), location, prod_suffix]
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(label)
+	var tooltip := "%s\n%s\n%s — %s" % [
+		s.name,
+		tr(s.profession),
+		_job_label(s.job),
+		location,
+	]
+	if prod != "":
+		tooltip += "\n\n→ " + prod
+	var sprite := _make_survivor_sprite(s, tooltip)
+	_awake_list.add_child(sprite)
 
 func _format_output(s: Survivor) -> String:
 	var out: Dictionary = GameState.get_survivor_output(s)
@@ -512,56 +580,8 @@ func _format_tile_label(key: String) -> String:
 	var type_key: String = "TILE_TYPE_" + HexTile.Type.keys()[tile.type]
 	return "%s (%d,%d)" % [tr(type_key), tile.q, tile.r]
 
-func _add_candidate_row(s: Survivor) -> void:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_asleep_list.add_child(row)
-	var label := Label.new()
-	label.text = "  %s (%s)" % [s.name, tr(s.profession)]
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(label)
-	var btn := Button.new()
-	btn.text = tr("BTN_WAKE") % GameState.config.wake_cost
-	btn.disabled = not GameState.can_wake(s.id)
-	var sid := s.id
-	btn.pressed.connect(func(): GameState.wake(sid))
-	row.add_child(btn)
-
-func _add_targeted_search_row() -> void:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_asleep_list.add_child(row)
-	var label := Label.new()
-	label.text = tr("LABEL_SEARCH_FOR")
-	row.add_child(label)
-	_targeted_selector = OptionButton.new()
-	for prof in GameState.roster.all_professions():
-		_targeted_selector.add_item(tr(prof))
-		_targeted_selector.set_item_metadata(_targeted_selector.item_count - 1, prof)
-	_targeted_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(_targeted_selector)
-	var btn := Button.new()
-	btn.text = tr("BTN_SEARCH") % GameState.config.wake_cost_targeted
-	btn.disabled = not GameState.can_targeted_wake()
-	btn.pressed.connect(_on_targeted_search_pressed)
-	row.add_child(btn)
-	_targeted_status = _add_label(_asleep_list, "")
-
-func _on_targeted_search_pressed() -> void:
-	if _targeted_selector == null:
-		return
-	var idx := _targeted_selector.selected
-	if idx < 0:
-		return
-	var profession: String = _targeted_selector.get_item_metadata(idx)
-	GameState.targeted_wake(profession)
-
 func _on_advance_pressed() -> void:
 	GameState.advance_turn()
-
-func _on_targeted_wake_failed(profession: String) -> void:
-	if _targeted_status != null:
-		_targeted_status.text = tr("SEARCH_FAILED") % profession
 
 func _on_run_ended(cause: GameState.EndCause) -> void:
 	var label := ""
@@ -626,3 +646,75 @@ func _resource_label(resource_name: String) -> String:
 		"wood": return tr("RESOURCE_WOOD")
 		"ore": return tr("RESOURCE_ORE")
 		_: return resource_name
+
+func _make_candidate_card(s: Survivor) -> Control:
+	var tooltip := "%s\n%s\n\n%s" % [
+		s.name,
+		tr(s.profession),
+		tr("BTN_WAKE") % GameState.config.wake_cost,
+	]
+	var sprite := _make_survivor_sprite(s, tooltip)
+	# Clic = wake direct
+	if GameState.can_wake(s.id):
+		var sid := s.id
+		sprite.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+				GameState.wake(sid))
+		sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	else:
+		sprite.modulate = Color(0.5, 0.5, 0.5)  # grisé si pas wake-able
+	return sprite
+
+func _on_computer_pressed() -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = tr("POPUP_COMPUTER_TITLE")
+	add_child(dialog)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 8)
+	dialog.add_child(vbox)
+	# Recherche ciblée
+	var search_row := HBoxContainer.new()
+	vbox.add_child(search_row)
+	search_row.add_child(_make_label(tr("LABEL_SEARCH_FOR")))
+	var selector := OptionButton.new()
+	for prof in GameState.roster.all_professions():
+		selector.add_item(tr(prof))
+		selector.set_item_metadata(selector.item_count - 1, prof)
+	search_row.add_child(selector)
+	var search_btn := Button.new()
+	search_btn.text = tr("BTN_SEARCH") % GameState.config.wake_cost_targeted
+	search_btn.disabled = not GameState.can_targeted_wake()
+	search_btn.pressed.connect(func():
+		var idx := selector.selected
+		if idx < 0: return
+		var profession: String = selector.get_item_metadata(idx)
+		GameState.targeted_wake(profession)
+		dialog.queue_free())
+	search_row.add_child(search_btn)
+	# Bouton "discuter" en placeholder
+	var chat_btn := Button.new()
+	chat_btn.text = tr("BTN_COMPUTER_CHAT")
+	chat_btn.disabled = true
+	vbox.add_child(chat_btn)
+	dialog.popup_centered()
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
+
+func _make_label(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	return label
+
+const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic.png"
+const SURVIVOR_SPRITE_SCALE := 3
+
+func _make_survivor_sprite(s: Survivor, tooltip_text: String) -> TextureRect:
+	var sprite := TextureRect.new()
+	sprite.texture = load(SURVIVOR_SPRITE_PATH)
+	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pour pixel art net
+	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
+	sprite.custom_minimum_size = tex_size * SURVIVOR_SPRITE_SCALE
+	sprite.tooltip_text = tooltip_text
+	sprite.mouse_filter = Control.MOUSE_FILTER_STOP  # pour que le hover/clic marche
+	return sprite

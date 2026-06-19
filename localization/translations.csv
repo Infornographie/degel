@@ -78,3 +78,8 @@ BUILDING_COMPUTER,Ordinateur central,Central Computer
 BUILDING_SYNTHESIZER,Synthétiseur,Synthesizer
 BTN_QUIT,Quitter,Quit
 BTN_TOGGLE_LANG,Switch to english,Passer en français
+BTN_COMPUTER_INTERACT,Interagir,Interact
+BTN_COMPUTER_CHAT,Discuter avec l'ordinateur,Talk to the computer
+LABEL_SYNTH_RUNNING,En marche,Running
+LABEL_SYNTH_INFO,−3 élec → +1 nourriture,−3 elec → +1 food
+POPUP_COMPUTER_TITLE,Ordinateur central,Central Computer
