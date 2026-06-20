@@ -90,3 +90,10 @@ LABEL_PRODUCTION_TITLE,Production,Production
 RESOURCE_HEAT,Chaleur,Heat
 BUILDING_CONSTRUCTION_ZONE,Zone de construction,Construction Zone
 BUILDING_CAMPFIRE,Feu de camp,Campfire
+LABEL_ASSIGN_WORKER,Affecter un travailleur,Assign a worker
+LABEL_NO_AVAILABLE_WORKER,(aucun éveillé pour le moment),(no awake survivor yet)
+TOOLTIP_CLICK_TO_UNASSIGN,(Clic pour retirer),(Click to unassign)
+BTN_ASSIGN,Affecter,Assign
+BTN_UNASSIGN,Retirer,Unassign
+ROLE_BUILDING_WORKER,Travailleur,Worker
+LABEL_CLEAR_BUILDING,Vider le bâtiment,Clear building

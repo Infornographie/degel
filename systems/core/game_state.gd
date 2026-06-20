@@ -20,6 +20,7 @@ signal candidates_changed
 signal targeted_wake_failed(profession: String)
 signal tile_assignment_changed(tile: HexTile)
 signal run_ended(cause: EndCause)
+signal building_assignment_changed(building: Building)
 
 var config: GameConfig
 var tile_config: TileConfig
@@ -149,15 +150,14 @@ func assign_to_tile(survivor_id: int, tile_key: String) -> bool:
 	var tile := hex_map.get_tile_by_key(tile_key)
 	if tile == null or tile.type == HexTile.Type.BUNKER:
 		return false
+	# Libérer l'ancien occupant de la tuile, s'il y en a un
 	if tile.worker_id != -1 and tile.worker_id != survivor_id:
 		var previous: Survivor = roster.get_by_id(tile.worker_id)
 		if previous != null:
 			previous.tile_key = ""
-	if s.tile_key != "":
-		var old_tile := hex_map.get_tile_by_key(s.tile_key)
-		if old_tile != null:
-			old_tile.worker_id = -1
-			tile_assignment_changed.emit(old_tile)
+	# Le colon quitte son emplacement actuel
+	_remove_survivor_from_assignments(s)
+	# Affectation
 	s.tile_key = tile_key
 	tile.worker_id = survivor_id
 	tile_assignment_changed.emit(tile)
@@ -176,6 +176,60 @@ func unassign_from_tile(survivor_id: int) -> bool:
 
 func set_synth(on: bool) -> void:
 	synth_on = on
+
+## Affecte un colon éveillé à un bâtiment. Renvoie true si succès.
+## Le colon quitte sa tuile s'il en occupait une, ou son ancien bâtiment.
+func assign_to_building(survivor_id: int, building_id: String) -> bool:
+	if is_over:
+		return false
+	var s: Survivor = roster.get_by_id(survivor_id)
+	if s == null or not s.awake:
+		return false
+	var target: Building = _find_building(building_id)
+	if target == null or target.state != Building.State.OPERATIONAL:
+		return false
+	if target.worker_ids.size() >= target.workers_max():
+		return false
+	# Le colon quitte son emplacement actuel
+	_remove_survivor_from_assignments(s)
+	# On l'affecte au nouveau bâtiment
+	target.worker_ids.append(survivor_id)
+	s.building_id = building_id
+	building_assignment_changed.emit(target)
+	return true
+
+## Retire un colon d'un bâtiment.
+func unassign_from_building(survivor_id: int) -> bool:
+	var s: Survivor = roster.get_by_id(survivor_id)
+	if s == null or s.building_id == "":
+		return false
+	var b: Building = _find_building(s.building_id)
+	if b != null:
+		b.worker_ids.erase(survivor_id)
+		building_assignment_changed.emit(b)
+	s.building_id = ""
+	return true
+
+func _find_building(id: String) -> Building:
+	for b in buildings:
+		if b.config.id == id:
+			return b
+	return null
+
+## Helper : retire un colon de partout où il est assigné (tuile ou bâtiment).
+func _remove_survivor_from_assignments(s: Survivor) -> void:
+	if s.tile_key != "":
+		var t: HexTile = hex_map.get_tile_by_key(s.tile_key)
+		if t != null:
+			t.worker_id = -1
+			tile_assignment_changed.emit(t)
+		s.tile_key = ""
+	if s.building_id != "":
+		var b: Building = _find_building(s.building_id)
+		if b != null:
+			b.worker_ids.erase(s.id)
+			building_assignment_changed.emit(b)
+		s.building_id = ""
 
 # ── BOUCLE DE TOUR ──
 func advance_turn() -> void:
@@ -301,11 +355,7 @@ func _resolve_famine_deaths() -> void:
 	if _deaths_triggered:
 		var victim: Survivor = roster.pick_random_awake()
 		if victim != null:
-			if victim.tile_key != "":
-				var t := hex_map.get_tile_by_key(victim.tile_key)
-				if t != null:
-					t.worker_id = -1
-					tile_assignment_changed.emit(t)
+			_remove_survivor_from_assignments(victim)
 			roster.remove(victim)
 			var entry := {
 				"name": victim.name,

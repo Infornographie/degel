@@ -43,6 +43,7 @@ func _ready() -> void:
 	GameState.tile_assignment_changed.connect(_refresh)
 	GameState.run_ended.connect(_on_run_ended)
 	GameState.nightly_deaths.connect(_on_nightly_deaths)
+	GameState.building_assignment_changed.connect(_refresh)
 	# On cache l'UI le temps que le layout se calcule
 	modulate.a = 0.0
 	await get_tree().process_frame
@@ -554,12 +555,27 @@ func _rebuild_lists() -> void:
 		_add_label(_awake_list, tr("LABEL_NOBODY_AWAKE"))
 
 func _add_awake_row(s: Survivor) -> void:
-	var location := tr("LABEL_IN_BUNKER") if s.tile_key == "" else tr("LABEL_AT_TILE") + _format_tile_label(s.tile_key)
+	var location: String
+	var role: String
+	if s.tile_key != "":
+		location = tr("LABEL_AT_TILE") + _format_tile_label(s.tile_key)
+		role = _job_label(s.job)
+	elif s.building_id != "":
+		var b: Building = GameState._find_building(s.building_id)
+		if b != null:
+			location = tr("LABEL_AT_TILE") + tr(b.config.name_key)
+			role = tr("ROLE_BUILDING_WORKER")
+		else:
+			location = tr("LABEL_IN_BUNKER")
+			role = _job_label(s.job)
+	else:
+		location = tr("LABEL_IN_BUNKER")
+		role = _job_label(s.job)
 	var prod := _format_output(s)
 	var tooltip := "%s\n%s\n%s — %s" % [
 		s.name,
 		tr(s.profession),
-		_job_label(s.job),
+		role,
 		location,
 	]
 	if prod != "":
@@ -872,18 +888,18 @@ func _make_production_row(resource_name: String, produced: float, consumed: floa
 		icons.add_child(_make_production_icon(resource_name, overlay))
 	return row
 
-func _make_resource_icon(resource_name: String, size: int) -> Control:
+func _make_resource_icon(resource_name: String, icon_size: int) -> Control:
 	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
 	if ResourceLoader.exists(sprite_path):
 		var icon := TextureRect.new()
 		icon.texture = load(sprite_path)
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.custom_minimum_size = Vector2(size, size)
+		icon.custom_minimum_size = Vector2(icon_size, icon_size)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		return icon
 	var placeholder := ColorRect.new()
 	placeholder.color = _placeholder_color(resource_name)
-	placeholder.custom_minimum_size = Vector2(size, size)
+	placeholder.custom_minimum_size = Vector2(icon_size, icon_size)
 	return placeholder
 
 const OVERLAY_PATH := "res://assets/resources/%s.png"
@@ -925,9 +941,103 @@ func _add_construction_zone_slot(b: Building) -> void:
 	vbox.add_theme_constant_override("separation", 4)
 	panel.add_child(vbox)
 	vbox.add_child(_slot_title(tr(b.config.name_key)))
-	var info := Label.new()
-	info.text = tr("LABEL_NO_WORKER")
-	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	info.add_theme_font_size_override("font_size", 10)
-	info.modulate = Color(0.7, 0.7, 0.7)
-	vbox.add_child(info)
+	# Affichage des colons assignés (sprites)
+	var workers_row := HBoxContainer.new()
+	workers_row.add_theme_constant_override("separation", 4)
+	workers_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.add_child(workers_row)
+	if b.worker_ids.is_empty():
+		var info := Label.new()
+		info.text = tr("LABEL_NO_WORKER")
+		info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		info.add_theme_font_size_override("font_size", 10)
+		info.modulate = Color(0.7, 0.7, 0.7)
+		vbox.add_child(info)
+	else:
+		for wid in b.worker_ids:
+			var s: Survivor = GameState.roster.get_by_id(wid)
+			if s != null:
+				workers_row.add_child(_make_assigned_worker_sprite(s))
+	# Le clic sur le panel ouvre le popup d'affectation
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and (event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT):
+			_open_building_popup(b, event.global_position))
+
+func _make_assigned_worker_sprite(s: Survivor) -> Control:
+	var tooltip := "%s\n%s\n\n%s" % [
+		s.name,
+		tr(s.profession),
+		tr("TOOLTIP_CLICK_TO_UNASSIGN"),
+	]
+	var sprite := _make_survivor_sprite(s, tooltip)
+	sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var sid := s.id
+	sprite.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			GameState.unassign_from_building(sid))
+	return sprite
+
+func _open_building_popup(b: Building, popup_position: Vector2) -> void:
+	# Nettoyage de l'ancien popup
+	if _tile_popup != null:
+		_tile_popup.queue_free()
+	for sub in _popup_submenus:
+		if sub != null:
+			sub.queue_free()
+	_popup_submenus.clear()
+	_tile_popup = PopupMenu.new()
+	add_child(_tile_popup)
+	# Si le bâtiment a déjà des workers : option Clear
+	if not b.worker_ids.is_empty():
+		_tile_popup.add_item(tr("LABEL_CLEAR_BUILDING"))
+		_tile_popup.set_item_metadata(_tile_popup.item_count - 1, {"action": "clear_building", "building_id": b.config.id})
+		_tile_popup.add_separator()
+	# Liste des éveillés
+	var any := false
+	for s in GameState.awake_survivors():
+		var location_hint := ""
+		if s.tile_key != "":
+			location_hint = "  ← " + _format_tile_label(s.tile_key)
+		elif s.building_id != "" and s.building_id != b.config.id:
+			var other: Building = GameState._find_building(s.building_id)
+			if other != null:
+				location_hint = "  ← " + tr(other.config.name_key)
+		elif s.building_id == b.config.id:
+			location_hint = "  " + tr("LABEL_HERE")
+		else:
+			location_hint = "  (" + tr("LABEL_IN_BUNKER") + ")"
+		_tile_popup.add_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint])
+		_tile_popup.set_item_metadata(_tile_popup.item_count - 1, {
+			"action": "assign_to_building",
+			"survivor_id": s.id,
+			"building_id": b.config.id,
+		})
+		any = true
+	if not any:
+		_tile_popup.add_item(tr("LABEL_NO_AVAILABLE_WORKER"))
+		_tile_popup.set_item_disabled(_tile_popup.item_count - 1, true)
+	_tile_popup.id_pressed.connect(_on_building_popup_selected)
+	_tile_popup.position = Vector2i(popup_position)
+	_tile_popup.popup()
+
+func _on_building_popup_selected(index: int) -> void:
+	var meta = _tile_popup.get_item_metadata(index)
+	if meta == null:
+		return
+	match meta.get("action", ""):
+		"clear_building":
+			var b: Building = GameState._find_building(meta["building_id"])
+			if b != null:
+				# Retirer tous les workers
+				for wid in b.worker_ids.duplicate():
+					GameState.unassign_from_building(wid)
+		"assign_to_building":
+			var sid: int = meta["survivor_id"]
+			var bid: String = meta["building_id"]
+			var s: Survivor = GameState.roster.get_by_id(sid)
+			# Si le colon est déjà ici → on le retire
+			if s != null and s.building_id == bid:
+				GameState.unassign_from_building(sid)
+			else:
+				GameState.assign_to_building(sid, bid)
