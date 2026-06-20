@@ -54,6 +54,7 @@ SEARCH_FAILED,  Aucun(e) %s en cryo. Énergie perdue.,  No %s found in cryo. Res
 RESOURCE_FOOD,Nourriture,Food
 RESOURCE_WOOD,Bois,Wood
 RESOURCE_ORE,Minerai,Ore
+RESOURCE_ELECTRICITY,Électricité,Electricity
 PROF_CEO,PDG,CEO
 PROF_TRADER,Trader,Trader
 PROF_GAME_DESIGNER,Game designer,Game designer
@@ -85,3 +86,5 @@ LABEL_SYNTH_INFO,−3 élec → +1 nourriture,−3 elec → +1 food
 POPUP_COMPUTER_TITLE,Ordinateur central,Central Computer
 BTN_WAKE_SHORT,Réveiller,Wake
 LABEL_STILL_IN_CRYO,File de rêveil : %d,Awakening pool: %d
+LABEL_PRODUCTION_TITLE,Production,Production
+RESOURCE_HEAT,Chaleur,Heat

@@ -31,6 +31,9 @@ var is_over: bool = false
 # --- Réacteur (flux, pas de stock) ---
 var reactor_output: float
 
+# Consommations effectuées ce tour (pour l'affichage de production)
+var _electricity_consumed_this_turn: float = 0.0
+
 # --- Ressources : flux et stocks ---
 var resources: Dictionary = {}
 
@@ -108,6 +111,7 @@ func wake(id: int) -> bool:
 	if _wakes_done_this_turn >= config.wakes_per_turn:
 		return false
 	resources["electricity"] -= config.wake_cost
+	_electricity_consumed_this_turn += config.wake_cost
 	_wakes_done_this_turn += 1
 	s.awake = true
 	survivor_woken.emit(s)
@@ -183,6 +187,7 @@ func advance_turn() -> void:
 	# 1) Synthé (consomme l'élec du tour avant les productions de tuile)
 	if synth_on:
 		resources["electricity"] -= SYNTH_ELECTRICITY_COST
+		_electricity_consumed_this_turn += SYNTH_ELECTRICITY_COST
 		resources["food"] += SYNTH_FOOD_OUTPUT
 
 	# 2) Production des tuiles
@@ -233,6 +238,9 @@ func advance_turn() -> void:
 		nightly_deaths.emit(_deaths_this_turn.duplicate())
 	turn_advanced.emit(turn)
 	resources_changed.emit(resources)
+
+func electricity_consumed_this_turn() -> float:
+	return _electricity_consumed_this_turn
 
 # ── ÉNERGIE & EXTINCTION ──
 ## Tant que l'élec est négative, on tente d'éteindre des cryos pour combler.
@@ -311,6 +319,7 @@ func _resolve_famine_deaths() -> void:
 # ── HELPERS INTERNES ──
 func _begin_turn() -> void:
 	_wakes_done_this_turn = 0
+	_electricity_consumed_this_turn = 0.0
 	resources["electricity"] = reactor_output
 	resources["heat"] = 0.0
 	_refill_candidates()
@@ -340,6 +349,7 @@ func targeted_wake(profession: String) -> bool:
 	if _wakes_done_this_turn >= config.wakes_per_turn:
 		return false
 	resources["electricity"] -= config.wake_cost_targeted
+	_electricity_consumed_this_turn += config.wake_cost_targeted
 	_wakes_done_this_turn += 1
 	var s: Survivor = roster.find_sleeping_by_profession(profession)
 	if s == null:

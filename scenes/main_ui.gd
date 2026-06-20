@@ -17,7 +17,6 @@ const TILE_COLORS := {
 	HexTile.Type.MOUNTAIN: Color("#7a5a3a"),
 }
 
-var _resources_section: VBoxContainer
 var _famine_label: Label
 var _awake_header: Label
 var _awake_list: HBoxContainer
@@ -30,6 +29,7 @@ var _popup_tile_key: String = ""
 var _popup_submenus: Array[PopupMenu] = []
 var _colony_grid: GridContainer
 const COLONY_SLOTS: int = 8
+var _infos_section: VBoxContainer
 
 func _ready() -> void:
 	_build_ui()
@@ -49,14 +49,12 @@ func _ready() -> void:
 
 func _build_ui() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-	# Split vertical principal : top (colony + map) / bottom (data & buttons)
 	var main_vbox := VBoxContainer.new()
 	main_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	main_vbox.add_theme_constant_override("separation", 12)
+	main_vbox.add_theme_constant_override("separation", 8)
 	add_child(main_vbox)
 
-	# --- Rang du haut : colony + map ---
+	# Rang du haut : settlement à gauche, map+prod à droite
 	var top_row := HBoxContainer.new()
 	top_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -64,64 +62,76 @@ func _build_ui() -> void:
 	top_row.add_theme_constant_override("separation", 12)
 	main_vbox.add_child(top_row)
 
-	# Colony à gauche du rang du haut
-	var colony_panel := VBoxContainer.new()
-	colony_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	colony_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	colony_panel.size_flags_stretch_ratio = 0.60
-	top_row.add_child(colony_panel)
-	_build_colony_panel(colony_panel)
+	var settlement_panel := VBoxContainer.new()
+	settlement_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	settlement_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	settlement_panel.size_flags_stretch_ratio = 0.65
+	top_row.add_child(settlement_panel)
+	_build_colony_panel(settlement_panel)
 
-	# Map à droite du rang du haut
+	var right_column := VBoxContainer.new()
+	right_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	right_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	right_column.size_flags_stretch_ratio = 0.35
+	right_column.add_theme_constant_override("separation", 8)
+	top_row.add_child(right_column)
+
 	var map_panel := VBoxContainer.new()
 	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_panel.size_flags_stretch_ratio = 0.40
-	top_row.add_child(map_panel)
+	map_panel.size_flags_stretch_ratio = 0.55
+	right_column.add_child(map_panel)
 	_build_map_panel(map_panel)
 
-	# --- Rang du bas : data & buttons ---
-	var bottom_row := HBoxContainer.new()
-	bottom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bottom_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	bottom_row.size_flags_stretch_ratio = 0.30
-	bottom_row.add_theme_constant_override("separation", 16)
-	main_vbox.add_child(bottom_row)
+	var production_panel := VBoxContainer.new()
+	production_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	production_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	production_panel.size_flags_stretch_ratio = 0.45
+	right_column.add_child(production_panel)
+	_build_production_panel(production_panel)
 
-	# Zone ressources
-	var resources_scroll := ScrollContainer.new()
-	resources_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	resources_scroll.size_flags_stretch_ratio = 0.30
-	resources_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	bottom_row.add_child(resources_scroll)
-	var resources_vbox := VBoxContainer.new()
-	resources_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	resources_scroll.add_child(resources_vbox)
-	_build_resources_section(resources_vbox)
+	# Rang du milieu : infos + awakened + buttons
+	var middle_row := HBoxContainer.new()
+	middle_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	middle_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	middle_row.size_flags_stretch_ratio = 0.18
+	middle_row.add_theme_constant_override("separation", 16)
+	main_vbox.add_child(middle_row)
 
-	# Zone survivants
-	var survivors_scroll := ScrollContainer.new()
-	survivors_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	survivors_scroll.size_flags_stretch_ratio = 0.50
-	survivors_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	bottom_row.add_child(survivors_scroll)
-	var survivors_vbox := VBoxContainer.new()
-	survivors_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	survivors_vbox.add_theme_constant_override("separation", 8)
-	survivors_scroll.add_child(survivors_vbox)
-	_build_survivors_section(survivors_vbox)
+	var infos_panel := VBoxContainer.new()
+	infos_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	infos_panel.size_flags_stretch_ratio = 0.20
+	infos_panel.clip_contents = true
+	middle_row.add_child(infos_panel)
+	_build_infos_section(infos_panel)
 
-	# Zone boutons (advance, necrology, quit)
-	var buttons_vbox := VBoxContainer.new()
-	buttons_vbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	buttons_vbox.size_flags_stretch_ratio = 0.20
-	buttons_vbox.add_theme_constant_override("separation", 8)
-	bottom_row.add_child(buttons_vbox)
-	_build_buttons_section(buttons_vbox)
+	# Awakened : scrollable et clippé pour ne pas pousser les autres
+	var awake_scroll := ScrollContainer.new()
+	awake_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	awake_scroll.size_flags_stretch_ratio = 0.55
+	awake_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	middle_row.add_child(awake_scroll)
+	var awake_panel := VBoxContainer.new()
+	awake_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	awake_scroll.add_child(awake_panel)
+	_build_survivors_section(awake_panel)
 
-func _build_resources_section(parent: VBoxContainer) -> void:
-	_resources_section = VBoxContainer.new()
-	parent.add_child(_resources_section)
+	var buttons_panel := VBoxContainer.new()
+	buttons_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buttons_panel.size_flags_stretch_ratio = 0.25
+	middle_row.add_child(buttons_panel)
+	_build_buttons_section(buttons_panel)
+
+	# Rang du bas : resources bar
+	var resources_row := HBoxContainer.new()
+	resources_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	resources_row.custom_minimum_size = Vector2(0, 50)
+	main_vbox.add_child(resources_row)
+	_build_resources_bar(resources_row)
+
+func _build_infos_section(parent: VBoxContainer) -> void:
+	_infos_section = VBoxContainer.new()
+	parent.add_child(_infos_section)
 	_famine_label = _add_label(parent, "")
 
 func _build_survivors_section(parent: VBoxContainer) -> void:
@@ -490,38 +500,26 @@ func _on_tile_popup_selected(id: int) -> void:
 # --- Refresh ---
 
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
-	_rebuild_resources()
+	_rebuild_resources()  # met à jour les infos (turn, élec, famine)
 	_famine_label.text = tr("LABEL_FAMINE") % GameState.famine_turns if GameState.famine_turns > 0 else ""
 	_rebuild_lists()
 	_draw_map()
 	_draw_colony()
+	_rebuild_resources_bar()
+	_rebuild_production()
 
 func _rebuild_resources() -> void:
-	for child in _resources_section.get_children():
+	for child in _infos_section.get_children():
 		child.queue_free()
-	_add_label(_resources_section, tr("LABEL_TURN") % GameState.turn)
-		
-	# Bloc énergie : tout sur une vue compacte
+	_add_label(_infos_section, tr("LABEL_TURN") % GameState.turn)
+	# Bloc énergie
 	var elec_value: float = GameState.resources["electricity"]
 	var elec_parts: Array[String] = []
 	elec_parts.append(tr("LABEL_REACTOR") % GameState.reactor_output)
 	if GameState.synth_on:
 		elec_parts.append(tr("LABEL_SYNTH_COST") % GameState.SYNTH_ELECTRICITY_COST)
 	elec_parts.append(tr("LABEL_USABLE") % elec_value)
-	_add_label(_resources_section, tr("LABEL_ELEC_HEADER") + " | ".join(elec_parts))
-	if GameState.resources["heat"] > 0.0:
-		_add_label(_resources_section, tr("LABEL_HEAT") % GameState.resources["heat"])
-
-	var food_income := _aggregate_production("food")
-	var food_outcome: float = GameState.awake_count() * GameState.config.food_per_survivor
-	_add_label(_resources_section, tr("LABEL_FOOD") % [
-		GameState.resources["food"], food_income, food_outcome])
-	var wood_income := _aggregate_production("wood")
-	_add_label(_resources_section, tr("LABEL_WOOD") % [
-		GameState.resources["wood"], wood_income])
-	var ore_income := _aggregate_production("ore")
-	_add_label(_resources_section, tr("LABEL_ORE") % [
-		GameState.resources["ore"], ore_income])
+	_add_label(_infos_section, tr("LABEL_ELEC_HEADER") + " | ".join(elec_parts))
 
 func _aggregate_production(resource_name: String) -> float:
 	var total: float = 0.0
@@ -721,3 +719,190 @@ func _make_survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
 	sprite.tooltip_text = sprite_tooltip
 	sprite.mouse_filter = Control.MOUSE_FILTER_STOP  # pour que le hover/clic marche
 	return sprite
+
+var _resources_bar: HBoxContainer
+const RESOURCE_ORDER: Array[String] = ["food", "wood", "ore"]
+const PRODUCTION_ORDER: Array[String] = ["food", "wood", "ore", "electricity", "heat"]
+const RESOURCE_SPRITE_PATH := "res://assets/resources/%s.png"
+const RESOURCE_SPRITE_SIZE: int = 32
+
+func _build_resources_bar(parent: HBoxContainer) -> void:
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	parent.add_child(scroll)
+	_resources_bar = HBoxContainer.new()
+	_resources_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_resources_bar.add_theme_constant_override("separation", 24)
+	scroll.add_child(_resources_bar)
+
+func _rebuild_resources_bar() -> void:
+	if _resources_bar == null:
+		return
+	for child in _resources_bar.get_children():
+		child.queue_free()
+	for resource_name in RESOURCE_ORDER:
+		_resources_bar.add_child(_make_resource_pill(resource_name))
+
+func _make_resource_pill(resource_name: String) -> HBoxContainer:
+	var pill := HBoxContainer.new()
+	pill.add_theme_constant_override("separation", 6)
+	pill.tooltip_text = _resource_label(resource_name)
+	# Icône (sprite si dispo, sinon placeholder coloré)
+	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
+	if ResourceLoader.exists(sprite_path):
+		var icon := TextureRect.new()
+		icon.texture = load(sprite_path)
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
+		pill.add_child(icon)
+	else:
+		var placeholder := ColorRect.new()
+		placeholder.color = _placeholder_color(resource_name)
+		placeholder.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
+		pill.add_child(placeholder)
+	# Valeur
+	var value: float = GameState.resources.get(resource_name, 0.0)
+	var label := Label.new()
+	label.text = "%.0f" % value
+	label.add_theme_font_size_override("font_size", 16)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	pill.add_child(label)
+	return pill
+
+func _placeholder_color(resource_name: String) -> Color:
+	match resource_name:
+		"food": return Color("#c4a13a")
+		"wood": return Color("#7b4f2c")
+		"ore": return Color("#5a5a6b")
+		"electricity": return Color("#e8c441")
+		"heat": return Color("#c25a3a")
+		_: return Color.GRAY
+
+var _production_section: VBoxContainer
+
+func _build_production_panel(parent: VBoxContainer) -> void:
+	var title := _add_label(parent, tr("LABEL_PRODUCTION_TITLE"))
+	title.add_theme_font_size_override("font_size", 16)
+	_production_section = VBoxContainer.new()
+	_production_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_production_section.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	parent.add_child(_production_section)
+
+func _rebuild_production() -> void:
+	if _production_section == null:
+		return
+	for child in _production_section.get_children():
+		child.queue_free()
+	for resource_name in PRODUCTION_ORDER:
+		var produced: float = _compute_production(resource_name)
+		var consumed: float = _compute_consumption(resource_name)
+		if produced == 0.0 and consumed == 0.0:
+			continue
+		_production_section.add_child(_make_production_row(resource_name, produced, consumed))
+
+func _compute_production(resource_name: String) -> float:
+	var total: float = 0.0
+	for s in GameState.awake_survivors():
+		var out: Dictionary = GameState.get_survivor_output(s)
+		total += out.get(resource_name, 0.0)
+	if resource_name == "food" and GameState.synth_on:
+		total += GameState.SYNTH_FOOD_OUTPUT
+	if resource_name == "electricity":
+		total += GameState.reactor_output
+	return total
+
+func _compute_consumption(resource_name: String) -> float:
+	var total: float = 0.0
+	if resource_name == "food":
+		total += GameState.awake_count() * GameState.config.food_per_survivor
+	if resource_name == "electricity":
+		total += GameState.electricity_consumed_this_turn()
+		# Synthé : ajoute son coût *seulement s'il ne l'a pas encore consommé* (donc avant advance_turn)
+		# Vu qu'on a déjà tracké le synthé au moment d'advance_turn, c'est traité
+		# Mais le synthé est ON et n'a pas encore consommé ce tour-ci tant qu'on n'avance pas
+		if GameState.synth_on:
+			total += GameState.SYNTH_ELECTRICITY_COST
+	return total
+
+func _make_production_row(resource_name: String, produced: float, consumed: float) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Total net en chiffre
+	var net: float = produced - consumed
+	var net_label := Label.new()
+	net_label.text = "  %+.0f  " % net
+	net_label.add_theme_font_size_override("font_size", 14)
+	net_label.custom_minimum_size = Vector2(60, 0)
+	row.add_child(net_label)
+	# Container des icônes avec separation négative si trop d'icônes
+	var icons := HBoxContainer.new()
+	icons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(icons)
+	var produced_int: int = int(produced)
+	var consumed_int: int = int(consumed)
+	var icon_count: int = max(produced_int, consumed_int)
+	# Calcul de séparation : si plus de 8 icônes, on commence à les superposer
+	var separation: int = 4
+	if icon_count > 8:
+		# On veut tenir dans environ 8 × (icon_size + 4) px de large
+		var target_width: float = 8.0 * (PRODUCTION_ICON_SIZE + 4)
+		var needed_width: float = icon_count * PRODUCTION_ICON_SIZE
+		var overlap_per_icon: float = (needed_width - target_width) / max(1, icon_count - 1)
+		separation = int(-overlap_per_icon)
+	icons.add_theme_constant_override("separation", separation)
+	for i in icon_count:
+		var overlay := ""
+		if i >= produced_int:
+			overlay = "crossed"
+		elif i >= consumed_int:
+			overlay = "surplus"
+		icons.add_child(_make_production_icon(resource_name, overlay))
+	return row
+
+func _make_resource_icon(resource_name: String, size: int) -> Control:
+	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
+	if ResourceLoader.exists(sprite_path):
+		var icon := TextureRect.new()
+		icon.texture = load(sprite_path)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.custom_minimum_size = Vector2(size, size)
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		return icon
+	var placeholder := ColorRect.new()
+	placeholder.color = _placeholder_color(resource_name)
+	placeholder.custom_minimum_size = Vector2(size, size)
+	return placeholder
+
+const OVERLAY_PATH := "res://assets/resources/%s.png"
+const PRODUCTION_ICON_SIZE: int = 40
+
+func _make_production_icon(resource_name: String, overlay: String) -> Control:
+	# On empile l'icône de la ressource et un overlay éventuel
+	var stack := Control.new()
+	stack.custom_minimum_size = Vector2(PRODUCTION_ICON_SIZE, PRODUCTION_ICON_SIZE)
+	var base := _make_resource_icon(resource_name, PRODUCTION_ICON_SIZE)
+	base.position = Vector2.ZERO
+	stack.add_child(base)
+	if overlay != "":
+		var overlay_path := OVERLAY_PATH % overlay
+		if ResourceLoader.exists(overlay_path):
+			var ov := TextureRect.new()
+			ov.texture = load(overlay_path)
+			ov.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ov.custom_minimum_size = Vector2(PRODUCTION_ICON_SIZE, PRODUCTION_ICON_SIZE)
+			ov.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ov.position = Vector2.ZERO
+			stack.add_child(ov)
+		else:
+			# Placeholder coloré semi-transparent
+			var ph := ColorRect.new()
+			ph.custom_minimum_size = Vector2(PRODUCTION_ICON_SIZE, PRODUCTION_ICON_SIZE)
+			if overlay == "surplus":
+				ph.color = Color(0.4, 1.0, 0.4, 0.5)
+			else:
+				ph.color = Color(1.0, 0.3, 0.3, 0.6)
+			ph.position = Vector2.ZERO
+			stack.add_child(ph)
+	return stack
