@@ -10,5 +10,6 @@ build_cost = {
 "ore": 10.0,
 "wood": 10.0
 }
+build_order = Array[String](["wood", "ore"])
 build_work = 3.0
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

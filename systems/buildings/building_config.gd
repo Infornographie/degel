@@ -22,6 +22,9 @@ enum Family {
 @export_group("Construction")
 ## Coût en ressources pour construire. { "wood": 5.0, "ore": 2.0 }.
 @export var build_cost: Dictionary = {}
+## Ordre de consommation des ressources pour la construction.
+## Si vide, on prend les clés du Dictionary dans leur ordre.
+@export var build_order: Array[String] = []
 ## Coût en unités de travail pour construire. 1 unité = 1 tour-colon par défaut.
 @export var build_work: float = 5.0
 ## Si vrai, le bâtiment est posé dès la création du jeu (bunker initial).

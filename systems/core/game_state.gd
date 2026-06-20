@@ -21,6 +21,9 @@ signal targeted_wake_failed(profession: String)
 signal tile_assignment_changed(tile: HexTile)
 signal run_ended(cause: EndCause)
 signal building_assignment_changed(building: Building)
+signal construction_started(building: Building)
+signal construction_progressed(building: Building)
+signal construction_completed(building: Building)
 
 var config: GameConfig
 var tile_config: TileConfig
@@ -41,6 +44,7 @@ var resources: Dictionary = {}
 # --- Buildings ---
 var building_registry: BuildingRegistry
 var buildings: Array[Building] = []
+var _next_building_instance_id: int = 0
 
 # --- Nécrologie (pour 5f) ---
 var _deaths_this_turn: Array = []
@@ -246,6 +250,7 @@ func advance_turn() -> void:
 
 	# 2) Production des tuiles
 	_resolve_tile_production()
+	_resolve_construction()
 
 	# 3) Repas + famine
 	var needed: float = awake_count() * config.food_per_survivor
@@ -432,5 +437,124 @@ func compute_score() -> Dictionary:
 func _init_starter_buildings() -> void:
 	for building_config in building_registry.starters():
 		var b := Building.new(building_config)
+		b.instance_id = _next_building_instance_id
+		_next_building_instance_id += 1
 		b.complete_construction()
 		buildings.append(b)
+
+## Démarre un nouveau chantier sur un slot vide.
+## Crée le Building en UNDER_CONSTRUCTION, le place, et le rend cible active.
+func start_construction(target_type_id: String, slot_index: int) -> bool:
+	if is_over:
+		return false
+	var target_config: BuildingConfig = building_registry.get_config(target_type_id)
+	if target_config == null or target_config.is_starter:
+		return false
+	if not _is_slot_available(slot_index):
+		return false
+	var b := Building.new(target_config)
+	b.instance_id = _next_building_instance_id
+	_next_building_instance_id += 1
+	b.slot_index = slot_index
+	b.state = Building.State.UNDER_CONSTRUCTION
+	buildings.append(b)
+	# Devient la cible active de la zone de construction
+	var zone: Building = _find_building_by_type("construction_zone")
+	if zone != null:
+		zone.construction_target = str(b.instance_id)
+	construction_started.emit(b)
+	return true
+
+## Change la cible active de la zone de construction (par instance_id).
+func set_active_construction(instance_id: int) -> bool:
+	var zone: Building = _find_building_by_type("construction_zone")
+	if zone == null:
+		return false
+	var target := _find_building_by_instance(instance_id)
+	if target == null or target.state != Building.State.UNDER_CONSTRUCTION:
+		return false
+	zone.construction_target = str(instance_id)
+	construction_started.emit(target)  # réutilise le signal pour rafraîchir
+	return true
+
+## Annule un chantier (seulement si rien n'a encore été consommé).
+func cancel_construction(instance_id: int) -> bool:
+	var b := _find_building_by_instance(instance_id)
+	if b == null or b.state != Building.State.UNDER_CONSTRUCTION:
+		return false
+	if not b.build_resources_consumed.is_empty():
+		return false  # déjà commencé, plus annulable
+	buildings.erase(b)
+	var zone: Building = _find_building_by_type("construction_zone")
+	if zone != null and zone.construction_target == str(instance_id):
+		zone.construction_target = ""
+	construction_started.emit(b)  # rafraîchir
+	return true
+
+func _is_slot_available(slot_index: int) -> bool:
+	for b in buildings:
+		if b.slot_index == slot_index:
+			return false
+	return true
+
+func _find_building_by_type(type_id: String) -> Building:
+	for b in buildings:
+		if b.config.id == type_id:
+			return b
+	return null
+
+func _find_building_by_instance(instance_id: int) -> Building:
+	for b in buildings:
+		if b.instance_id == instance_id:
+			return b
+	return null
+
+func _resolve_construction() -> void:
+	var zone: Building = _find_building_by_type("construction_zone")
+	if zone == null or zone.construction_target == "":
+		return
+	var target := _find_building_by_instance(int(zone.construction_target))
+	if target == null or target.state != Building.State.UNDER_CONSTRUCTION:
+		return
+	# Force de travail totale = somme des forces de travail des colons assignés à la zone
+	var total_work: float = 0.0
+	for wid in zone.worker_ids:
+		var s: Survivor = roster.get_by_id(wid)
+		if s != null and s.awake:
+			total_work += 1.0  # force par défaut, à raffiner plus tard
+	if total_work <= 0.0:
+		return
+	# Consomme dans l'ordre les ressources requises, jusqu'à épuiser la force de travail
+	var work_left: float = total_work
+	var order: Array[String] = target.config.build_order
+	if order.is_empty():
+		order = target.config.build_cost.keys()
+	for resource_name in order:
+		if work_left <= 0.0:
+			break
+		var needed: float = target.config.build_cost.get(resource_name, 0.0) - target.build_resources_consumed.get(resource_name, 0.0)
+		if needed <= 0.0:
+			continue
+		var to_consume: float = min(work_left, needed)
+		# Vérifier qu'on a la ressource en stock
+		var available: float = resources.get(resource_name, 0.0)
+		if available < 1.0:
+			continue  # pas assez en stock, on saute (on pourrait s'arrêter aussi)
+		to_consume = min(to_consume, available)
+		resources[resource_name] = available - to_consume
+		target.build_resources_consumed[resource_name] = target.build_resources_consumed.get(resource_name, 0.0) + to_consume
+		work_left -= to_consume
+	construction_progressed.emit(target)
+	# Vérifier si la construction est terminée
+	var done := true
+	for resource_name in target.config.build_cost:
+		var consumed: float = target.build_resources_consumed.get(resource_name, 0.0)
+		if consumed < target.config.build_cost[resource_name]:
+			done = false
+			break
+	if done:
+		target.complete_construction()
+		# Libérer la zone de construction
+		if zone.construction_target == str(target.instance_id):
+			zone.construction_target = ""
+		construction_completed.emit(target)

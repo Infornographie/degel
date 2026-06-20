@@ -25,6 +25,15 @@ var build_progress: float = 0.0
 ## Sert à savoir quand on a tout ce qu'il faut pour avancer.
 var build_resources_consumed: Dictionary = {}
 
+## Pour la zone de construction : id du bâtiment à construire (vide si rien à faire).
+var construction_target: String = ""
+
+## Identifiant unique d'instance (différent de config.id qui est le type).
+var instance_id: int = -1
+
+## Slot où le bâtiment est placé dans la grille colonie. -1 = non placé.
+var slot_index: int = -1
+
 func _init(p_config: BuildingConfig) -> void:
 	config = p_config
 

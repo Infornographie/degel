@@ -97,3 +97,11 @@ BTN_ASSIGN,Affecter,Assign
 BTN_UNASSIGN,Retirer,Unassign
 ROLE_BUILDING_WORKER,Travailleur,Worker
 LABEL_CLEAR_BUILDING,Vider le bâtiment,Clear building
+LABEL_BUILDING_TARGET,Construire : %s,Build: %s
+LABEL_NO_TARGET,(rien à construire),(no target)
+LABEL_CLEAR_TARGET,Aucune cible,No target
+LABEL_PLACE_HERE,(placer ici),(place here)
+LABEL_UNDER_CONSTRUCTION,en construction,under construction
+LABEL_OPERATIONAL,opérationnel,operational
+BTN_CHOOSE_TARGET,Choisir une cible,Choose target
+BTN_ASSIGN_WORKER,Affecter,Assign
