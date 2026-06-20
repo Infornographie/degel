@@ -17,6 +17,8 @@ const TILE_COLORS := {
 	HexTile.Type.MOUNTAIN: Color("#7a5a3a"),
 }
 
+const BUNKER_BUILDING_IDS: Array[String] = ["computer", "cryo_room", "synthesizer"]
+
 var _famine_label: Label
 var _awake_header: Label
 var _awake_list: HBoxContainer
@@ -205,13 +207,15 @@ func _draw_colony() -> void:
 	var computer: Building = _find_starter("computer")
 	var synth: Building = _find_starter("synthesizer")
 	var cryo: Building = _find_starter("cryo_room")
+	var zone: Building = _find_starter("construction_zone")
 	# Slots 0-3 : ligne du haut, tous vides
 	for i in 4:
 		_add_empty_slot()
-	# Slots 4-7 : computer, vide, vide, vide
+	# Slots 4-7 : computer, zone de construction, vide, vide
 	if computer != null: _add_computer_slot(computer)
 	else: _add_empty_slot()
-	_add_empty_slot()
+	if zone != null: _add_construction_zone_slot(zone)
+	else: _add_empty_slot()
 	_add_empty_slot()
 	_add_empty_slot()
 	# Slots 8-11 : cryo, synth, vide, vide
@@ -229,7 +233,7 @@ func _find_starter(id: String) -> Building:
 	return null
 
 func _add_computer_slot(b: Building) -> void:
-	var panel := _new_slot_panel()
+	var panel := _new_slot_panel(true)
 	_colony_grid.add_child(panel)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
@@ -241,7 +245,7 @@ func _add_computer_slot(b: Building) -> void:
 	vbox.add_child(btn)
 
 func _add_synth_slot(b: Building) -> void:
-	var panel := _new_slot_panel()
+	var panel := _new_slot_panel(true)
 	_colony_grid.add_child(panel)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
@@ -259,7 +263,7 @@ func _add_synth_slot(b: Building) -> void:
 	vbox.add_child(info)
 
 func _add_cryo_slot(b: Building) -> void:
-	var panel := _new_slot_panel()
+	var panel := _new_slot_panel(true)
 	_colony_grid.add_child(panel)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
@@ -282,11 +286,21 @@ func _add_cryo_slot(b: Building) -> void:
 	count_label.modulate = Color(0.7, 0.7, 0.7)
 	vbox.add_child(count_label)
 
-func _new_slot_panel() -> PanelContainer:
+func _new_slot_panel(is_bunker: bool = false) -> PanelContainer:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	panel.custom_minimum_size = Vector2(140, 100)
+	var style := StyleBoxFlat.new()
+	if is_bunker:
+		style.bg_color = Color("#2a2e3a")  # bleu-gris froid : bunker, technologique
+	else:
+		style.bg_color = Color("#3a322a")  # brun chaud : colonie, terre
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	panel.add_theme_stylebox_override("panel", style)
 	return panel
 
 func _slot_title(text: String) -> Label:
@@ -334,10 +348,7 @@ func _add_building_slot(b: Building) -> void:
 	vbox.add_child(family_label)
 
 func _add_empty_slot() -> void:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(140, 100)
+	var panel := _new_slot_panel(false)
 	panel.modulate = Color(1, 1, 1, 0.3)
 	_colony_grid.add_child(panel)
 	var label := Label.new()
@@ -906,3 +917,17 @@ func _make_production_icon(resource_name: String, overlay: String) -> Control:
 			ph.position = Vector2.ZERO
 			stack.add_child(ph)
 	return stack
+
+func _add_construction_zone_slot(b: Building) -> void:
+	var panel := _new_slot_panel(false)
+	_colony_grid.add_child(panel)
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 4)
+	panel.add_child(vbox)
+	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	var info := Label.new()
+	info.text = tr("LABEL_NO_WORKER")
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	info.add_theme_font_size_override("font_size", 10)
+	info.modulate = Color(0.7, 0.7, 0.7)
+	vbox.add_child(info)

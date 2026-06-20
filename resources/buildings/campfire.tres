@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://ds1gldxw4baqb"]
+
+[ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_hmo0i"]
+
+[resource]
+script = ExtResource("1_hmo0i")
+id = "campfire"
+name_key = "BUILDING_CAMPFIRE"
+build_cost = {
+"ore": 10.0,
+"wood": 10.0
+}
+build_work = 3.0
+metadata/_custom_type_script = "uid://djgwy70yusm4w"
