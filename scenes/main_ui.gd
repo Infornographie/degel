@@ -1,21 +1,6 @@
 extends Control
 ## UI placeholder — 4c. Carte interactive, jobs territorialisés.
 
-const HEX_SIZE: float = 32.0
-
-const TILE_LABELS := {
-	HexTile.Type.BUNKER: "B",
-	HexTile.Type.PLAINS: "P",
-	HexTile.Type.FOREST: "F",
-	HexTile.Type.MOUNTAIN: "M",
-}
-
-const TILE_COLORS := {
-	HexTile.Type.BUNKER: Color("#2c2c2c"),
-	HexTile.Type.PLAINS: Color("#a8c25a"),
-	HexTile.Type.FOREST: Color("#3a6b35"),
-	HexTile.Type.MOUNTAIN: Color("#7a5a3a"),
-}
 
 const BUNKER_BUILDING_IDS: Array[String] = ["computer", "cryo_room", "synthesizer"]
 
@@ -478,36 +463,112 @@ func _draw_map() -> void:
 		_add_hex(tile, pixel)
 
 func _hex_to_pixel(q: int, r: int) -> Vector2:
-	var x: float = HEX_SIZE * sqrt(3.0) * (q + r / 2.0)
-	var y: float = HEX_SIZE * 1.5 * r
+	# Pointy-top hex layout
+	var x: float = HEX_RADIUS * sqrt(3.0) * (q + r / 2.0)
+	var y: float = HEX_RADIUS * 1.5 * r
 	return Vector2(x, y)
 
+const HEX_RADIUS: float = 36.0  # taille = rayon du hex (du centre au sommet)
+
+const TILE_COLORS := {
+	HexTile.Type.BUNKER: Color("#2c2c2c"),
+	HexTile.Type.PLAINS: Color("#d4c47a"),    # jaune paille
+	HexTile.Type.FOREST: Color("#3a6b35"),
+	HexTile.Type.MOUNTAIN: Color("#7a5a3a"),
+}
+
+const TILE_LABEL_KEYS := {
+	HexTile.Type.BUNKER: "TILE_TYPE_SETTLEMENT",
+	HexTile.Type.PLAINS: "TILE_TYPE_PLAINS",
+	HexTile.Type.FOREST: "TILE_TYPE_FOREST",
+	HexTile.Type.MOUNTAIN: "TILE_TYPE_MOUNTAIN",
+}
+
+func _hex_polygon_points() -> PackedVector2Array:
+	# 6 sommets d'un hexagone pointy-top, centré sur (0,0)
+	var points := PackedVector2Array()
+	for i in 6:
+		var angle: float = deg_to_rad(60.0 * i - 30.0)
+		points.append(Vector2(cos(angle), sin(angle)) * HEX_RADIUS)
+	return points
+
 func _add_hex(tile: HexTile, center: Vector2) -> void:
-	var box_size := Vector2(HEX_SIZE, HEX_SIZE)
-	var bg := ColorRect.new()
-	bg.size = box_size
-	bg.position = center - box_size * 0.5
-	bg.color = TILE_COLORS.get(tile.type, Color.GRAY)
+	# Polygone hexagonal
+	var hex := Polygon2D.new()
+	hex.polygon = _hex_polygon_points()
+	hex.color = TILE_COLORS.get(tile.type, Color.GRAY)
+	hex.position = center
+	# Container pour gérer les clics (Polygon2D ne reçoit pas les events GUI directement)
+	var click_area := Control.new()
+	var bbox: float = HEX_RADIUS * 2.0
+	click_area.size = Vector2(bbox, bbox)
+	click_area.position = center - Vector2(HEX_RADIUS, HEX_RADIUS)
+	click_area.mouse_filter = Control.MOUSE_FILTER_STOP
+	_map_container.add_child(hex)
+	_map_container.add_child(click_area)
 	if tile.type != HexTile.Type.BUNKER:
-		bg.mouse_filter = Control.MOUSE_FILTER_STOP
 		var tkey := tile.key()
-		bg.gui_input.connect(func(event: InputEvent): _on_tile_clicked(event, tkey))
-	_map_container.add_child(bg)
-
-	# Lettre du type, + astérisque si la tuile est occupée
-	var letter: String = TILE_LABELS.get(tile.type, "?")
+		click_area.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.pressed:
+				if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+					_open_tile_popup(tkey, event.global_position))
+	# Affichage du worker + production
 	if tile.worker_id != -1:
-		letter += "*"
+		_render_tile_worker(tile, center)
+	else:
+		# Pas de worker : on affiche la lettre du type, discrète
+		var label := Label.new()
+		label.text = tr(TILE_LABEL_KEYS.get(tile.type, "")).substr(0, 1)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.size = Vector2(bbox, bbox)
+		label.position = center - Vector2(HEX_RADIUS, HEX_RADIUS)
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
+		_map_container.add_child(label)
 
-	var label := Label.new()
-	label.text = letter
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.size = box_size
-	label.position = center - box_size * 0.5
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	label.add_theme_color_override("font_color", Color.WHITE)
-	_map_container.add_child(label)
+const TILE_PROD_ICON_SIZE: int = 14
+
+func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
+	var s: Survivor = GameState.roster.get_by_id(tile.worker_id)
+	if s == null:
+		return
+	var out: Dictionary = GameState.get_survivor_output(s)
+	# Icônes de production EN FOND, derrière le sprite
+	if not out.is_empty():
+		var icons_row := HBoxContainer.new()
+		icons_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		icons_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var total: int = 0
+		for r in out:
+			total += int(out[r])
+		var separation: int = 0
+		if total > 3:
+			var icon_size: int = TILE_PROD_ICON_SIZE
+			var target_width: float = 3.0 * (icon_size)
+			var needed_width: float = total * icon_size
+			separation = int(-((needed_width - target_width) / max(1, total - 1)))
+		icons_row.add_theme_constant_override("separation", separation)
+		for resource_name in out:
+			var amount: int = int(out[resource_name])
+			for i in amount:
+				var icon := _make_resource_icon(resource_name, TILE_PROD_ICON_SIZE)
+				icons_row.add_child(icon)
+		# Positionne le row centré sur la tuile, légèrement décalé vers le bas
+		icons_row.size = Vector2(HEX_RADIUS * 2.0, TILE_PROD_ICON_SIZE)
+		icons_row.position = center - Vector2(HEX_RADIUS, HEX_RADIUS * 0.7)
+		_map_container.add_child(icons_row)
+	# Sprite du worker PAR-DESSUS, centré
+	var sprite := TextureRect.new()
+	sprite.texture = load(SURVIVOR_SPRITE_PATH % s.sprite_variant)
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
+	var sprite_size: Vector2 = tex_size * 3
+	sprite.size = sprite_size
+	sprite.position = center - sprite_size * 0.5 + Vector2(0, HEX_RADIUS * 0.15)
+	_map_container.add_child(sprite)
 
 func _on_tile_clicked(event: InputEvent, tile_key: String) -> void:
 	if event is InputEventMouseButton and event.pressed:
@@ -549,7 +610,7 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		for job_id in jobs:
 			var yield_val: float = tile.yields.get(job_id, 0.0)
 			var resource_name: String = ProductionSystem.JOB_RESOURCE.get(job_id, "")
-			var label_text := "%s  (+%.0f %s)" % [_job_label(job_id), yield_val, _resource_label(resource_name)]
+			var label_text := "%s  (+%.0f %s)" % [_activity_for_job_tile(job_id, tile.type),yield_val,_resource_label(resource_name)]
 			sub.add_item(label_text)
 			sub.set_item_metadata(sub.item_count - 1, {"survivor_id": s.id, "job": job_id})
 
@@ -558,14 +619,18 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		# Indication d'emplacement courant du colon
 		var location_hint := ""
 		if s.tile_key != "" and s.tile_key != tile_key:
-			location_hint = tr("LABEL_CURRENTLY_AT") + _format_tile_label(s.tile_key)
+			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
+			if current_tile != null:
+				location_hint = "  ← " + _activity_for_job_tile(s.job, current_tile.type) + " @ " + _format_tile_label(s.tile_key)
+		elif s.building_id != "":
+			var b: Building = GameState._find_building_by_type(s.building_id)
+			if b != null:
+				location_hint = "  ← " + _activity_for_building(b.config.id) + " @ " + tr(b.config.name_key)
 		elif s.tile_key == tile_key:
-			location_hint = tr("LABEL_HERE")
+			location_hint = "  " + tr("LABEL_HERE")
 		else:
-			location_hint = "  (" + tr("LABEL_IN_BUNKER") + ")"
-
-		_tile_popup.add_submenu_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint], sub.name)
-		any_available = true
+			location_hint = "  (" + tr("LABEL_IDLE") + ")"
+		_tile_popup.add_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint])
 
 	if not any_available and tile.worker_id == -1:
 		_tile_popup.add_item(tr("LABEL_NO_WORKER"))
@@ -658,23 +723,19 @@ func _rebuild_lists() -> void:
 
 func _add_awake_row(s: Survivor) -> void:
 	var location: String
-	var role: String
 	if s.tile_key != "":
 		location = tr("LABEL_AT_TILE") + _format_tile_label(s.tile_key)
-		role = _job_label(s.job)
 	elif s.building_id != "":
-		var b: Building = GameState._find_building(s.building_id)
+		var b: Building = GameState._find_building_by_type(s.building_id)
 		if b != null:
-			location = tr("LABEL_AT_TILE") + tr(b.config.name_key)
-			role = tr("ROLE_BUILDING_WORKER")
+			location = tr("LABEL_AT_TILE") + tr(b.config.name_key) + " " + tr("LABEL_IN_SETTLEMENT_BRACKETS")
 		else:
-			location = tr("LABEL_IN_BUNKER")
-			role = _job_label(s.job)
+			location = tr("LABEL_IN_SETTLEMENT")
 	else:
-		location = tr("LABEL_IN_BUNKER")
-		role = _job_label(s.job)
+		location = tr("LABEL_IDLE_IN_SETTLEMENT")
+	var role: String = _activity_label(s)
 	var prod := _format_output(s)
-	var tooltip := "%s\n%s\n%s — %s" % [
+	var tooltip := "%s (%s) — %s — %s" % [
 		s.name,
 		tr(s.profession),
 		role,
@@ -753,13 +814,42 @@ func _on_nightly_deaths(events: Array) -> void:
 			lines.append("%s (%s) — %s." % [entry.name, tr(entry.profession), entry.cause])
 	_show_popup(tr("POPUP_NEWS_TITLE"), tr("POPUP_NEWS_PREFIX") + "\n".join(lines))
 
-func _job_label(job: int) -> String:
+func _activity_label(s: Survivor) -> String:
+	# Activité dans un bâtiment
+	if s.building_id != "":
+		var b: Building = GameState._find_building_by_type(s.building_id)
+		if b != null:
+			return _activity_for_building(b.config.id)
+	# Activité sur une tuile (job × type de tuile)
+	if s.tile_key != "":
+		var tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
+		if tile != null:
+			return _activity_for_job_tile(s.job, tile.type)
+	# Sans affectation
+	return tr("ROLE_IDLE")
+
+func _activity_for_building(building_id: String) -> String:
+	match building_id:
+		"construction_zone": return tr("ROLE_BUILDER")
+		"synthesizer": return tr("ROLE_SYNTH_OPERATOR")
+		"campfire": return tr("ROLE_FIRE_KEEPER")
+		"kitchen": return tr("ROLE_COOK")
+		"tool_workshop": return tr("ROLE_TOOLMAKER")
+		_: return tr("ROLE_BUILDING_WORKER")
+
+func _activity_for_job_tile(job: int, tile_type: int) -> String:
 	match job:
-		GameState.Job.IDLE: return tr("JOB_IDLE")
-		GameState.Job.FARMER: return tr("JOB_FARMER")
-		GameState.Job.LUMBERJACK: return tr("JOB_LUMBERJACK")
-		GameState.Job.MINER: return tr("JOB_MINER")
-		_: return "?"
+		GameState.Job.FARMER:
+			match tile_type:
+				HexTile.Type.FOREST: return tr("ROLE_GATHERER")
+				HexTile.Type.PLAINS: return tr("ROLE_FARMER")
+				HexTile.Type.MOUNTAIN: return tr("ROLE_HERBALIST")
+				_: return tr("ROLE_FARMER")
+		GameState.Job.LUMBERJACK:
+			return tr("ROLE_LUMBERJACK")
+		GameState.Job.MINER:
+			return tr("ROLE_MINER")
+		_: return tr("ROLE_IDLE")
 
 func _resource_label(resource_name: String) -> String:
 	match resource_name:
@@ -835,7 +925,7 @@ func _make_label(text: String) -> Label:
 	label.text = text
 	return label
 
-const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic.png"
+const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic%d.png"
 const SURVIVOR_SPRITE_SCALE := 4
 
 func _make_survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
@@ -1067,7 +1157,7 @@ func _make_resource_icon(resource_name: String, icon_size: int) -> Control:
 	return placeholder
 
 const OVERLAY_PATH := "res://assets/resources/%s.png"
-const PRODUCTION_ICON_SIZE: int = 40
+const PRODUCTION_ICON_SIZE: int = 24
 
 func _make_production_icon(resource_name: String, overlay: String) -> Control:
 	# On empile l'icône de la ressource et un overlay éventuel
@@ -1228,7 +1318,6 @@ func _make_assigned_worker_sprite(s: Survivor) -> Control:
 	return sprite
 
 func _open_building_popup(b: Building, popup_position: Vector2) -> void:
-	# Nettoyage de l'ancien popup
 	if _tile_popup != null:
 		_tile_popup.queue_free()
 	for sub in _popup_submenus:
@@ -1247,15 +1336,17 @@ func _open_building_popup(b: Building, popup_position: Vector2) -> void:
 	for s in GameState.awake_survivors():
 		var location_hint := ""
 		if s.tile_key != "":
-			location_hint = "  ← " + _format_tile_label(s.tile_key)
+			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
+			if current_tile != null:
+				location_hint = "  ← " + _activity_for_job_tile(s.job, current_tile.type) + " @ " + _format_tile_label(s.tile_key)
 		elif s.building_id != "" and s.building_id != b.config.id:
-			var other: Building = GameState._find_building(s.building_id)
+			var other: Building = GameState._find_building_by_type(s.building_id)
 			if other != null:
-				location_hint = "  ← " + tr(other.config.name_key)
+				location_hint = "  ← " + _activity_for_building(other.config.id) + " @ " + tr(other.config.name_key)
 		elif s.building_id == b.config.id:
 			location_hint = "  " + tr("LABEL_HERE")
 		else:
-			location_hint = "  (" + tr("LABEL_IN_BUNKER") + ")"
+			location_hint = "  (" + tr("LABEL_IDLE") + ")"
 		_tile_popup.add_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint])
 		_tile_popup.set_item_metadata(_tile_popup.item_count - 1, {
 			"action": "assign_to_building",

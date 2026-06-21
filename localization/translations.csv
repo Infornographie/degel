@@ -107,3 +107,19 @@ BTN_CHOOSE_TARGET,Choisir une cible,Choose target
 BTN_ASSIGN_WORKER,Affecter,Assign
 RESOURCE_TOOLS,Outils,Tools
 BUILDING_TOOL_WORKSHOP,Atelier d'outils,Tool Workshop
+TILE_TYPE_SETTLEMENT,Colonie,Settlement
+ROLE_IDLE,Inactif,Idle
+ROLE_BUILDER,Bâtisseur,Builder
+ROLE_SYNTH_OPERATOR,Opérateur synthé,Synth operator
+ROLE_FIRE_KEEPER,Gardien du feu,Fire keeper
+ROLE_COOK,Cuisinier,Cook
+ROLE_TOOLMAKER,Outilleur,Toolmaker
+ROLE_GATHERER,Cueilleur,Gatherer
+ROLE_FARMER,Cultivateur,Farmer
+ROLE_HERBALIST,Herboriste,Herbalist
+ROLE_LUMBERJACK,Bûcheron,Lumberjack
+ROLE_MINER,Mineur,Miner
+LABEL_IN_SETTLEMENT_BRACKETS,(Colonie),(Settlement)
+LABEL_IN_SETTLEMENT,dans la colonie,in settlement
+LABEL_IDLE_IN_SETTLEMENT,inactif dans la colonie,idle in settlement
+LABEL_IDLE,inactif,idle
