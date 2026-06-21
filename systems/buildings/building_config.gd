@@ -21,7 +21,7 @@ enum Family {
 
 @export_group("Construction")
 ## Coût en ressources pour construire. { "wood": 5.0, "ore": 2.0 }.
-@export var build_cost: Dictionary = {}
+@export var build_cost: Dictionary[String, float] = {}
 ## Ordre de consommation des ressources pour la construction.
 ## Si vide, on prend les clés du Dictionary dans leur ordre.
 @export var build_order: Array[String] = []
@@ -32,9 +32,9 @@ enum Family {
 
 @export_group("Operation")
 ## Inputs consommés par tour quand le bâtiment fonctionne. { "wood": 2.0 }.
-@export var inputs: Dictionary = {}
+@export var inputs: Dictionary[String, float] = {}
 ## Outputs produits par tour. { "planks": 1.0 }.
-@export var outputs: Dictionary = {}
+@export var outputs: Dictionary[String, float] = {}
 ## Nombre de colons requis pour que le bâtiment tourne (au niveau 1).
 @export var workers_required: int = 1
 ## Nombre maximum de colons assignables au niveau 1.

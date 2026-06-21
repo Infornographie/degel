@@ -34,6 +34,9 @@ var instance_id: int = -1
 ## Slot où le bâtiment est placé dans la grille colonie. -1 = non placé.
 var slot_index: int = -1
 
+## Si false, le bâtiment opérationnel ne tourne pas (mais existe).
+var active: bool = true
+
 func _init(p_config: BuildingConfig) -> void:
 	config = p_config
 

@@ -105,3 +105,5 @@ LABEL_UNDER_CONSTRUCTION,en construction,under construction
 LABEL_OPERATIONAL,opérationnel,operational
 BTN_CHOOSE_TARGET,Choisir une cible,Choose target
 BTN_ASSIGN_WORKER,Affecter,Assign
+RESOURCE_TOOLS,Outils,Tools
+BUILDING_TOOL_WORKSHOP,Atelier d'outils,Tool Workshop

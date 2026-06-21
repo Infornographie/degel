@@ -10,6 +10,7 @@ var job: int = 0   # GameState.Job.IDLE par défaut
 var tile_key: String = ""   # tuile où il travaille, "" si au bunker
 var building_id: String = ""   # bâtiment où il travaille, "" si pas en bâtiment
 var sprite_variant: int = 0
+var work_force: float = 3.0
 
 
 func _init(p_id: int, p_name: String, p_profession: String) -> void:

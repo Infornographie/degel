@@ -51,7 +51,6 @@ var _deaths_this_turn: Array = []
 var necrology: Array = []  # entrées { name, profession, cause, turn }
 
 # --- Synthétiseur ---
-var synth_on: bool = false
 const SYNTH_ELECTRICITY_COST: float = 3.0
 const SYNTH_FOOD_OUTPUT: float = 1.0
 
@@ -77,6 +76,7 @@ func _ready() -> void:
 		"food": config.food_initial,
 		"wood": 0.0,
 		"ore": 0.0,
+		"tools": 0.0,
 		"electricity": 0.0,
 		"heat": 0.0,
 	}
@@ -178,9 +178,6 @@ func unassign_from_tile(survivor_id: int) -> bool:
 	s.tile_key = ""
 	return true
 
-func set_synth(on: bool) -> void:
-	synth_on = on
-
 ## Affecte un colon éveillé à un bâtiment. Renvoie true si succès.
 ## Le colon quitte sa tuile s'il en occupait une, ou son ancien bâtiment.
 func assign_to_building(survivor_id: int, building_id: String) -> bool:
@@ -242,15 +239,10 @@ func advance_turn() -> void:
 	turn += 1
 	_deaths_this_turn.clear()
 
-	# 1) Synthé (consomme l'élec du tour avant les productions de tuile)
-	if synth_on:
-		resources["electricity"] -= SYNTH_ELECTRICITY_COST
-		_electricity_consumed_this_turn += SYNTH_ELECTRICITY_COST
-		resources["food"] += SYNTH_FOOD_OUTPUT
-
 	# 2) Production des tuiles
 	_resolve_tile_production()
 	_resolve_construction()
+	_resolve_buildings_operation()
 
 	# 3) Repas + famine
 	var needed: float = awake_count() * config.food_per_survivor
@@ -521,7 +513,7 @@ func _resolve_construction() -> void:
 	for wid in zone.worker_ids:
 		var s: Survivor = roster.get_by_id(wid)
 		if s != null and s.awake:
-			total_work += 1.0  # force par défaut, à raffiner plus tard
+			total_work += s.work_force
 	if total_work <= 0.0:
 		return
 	# Consomme dans l'ordre les ressources requises, jusqu'à épuiser la force de travail
@@ -558,3 +550,33 @@ func _resolve_construction() -> void:
 		if zone.construction_target == str(target.instance_id):
 			zone.construction_target = ""
 		construction_completed.emit(target)
+
+func _resolve_buildings_operation() -> void:
+	for b in buildings:
+		if b.state != Building.State.OPERATIONAL:
+			continue
+		if not b.active:
+			continue
+		if b.config.id == "construction_zone":
+			continue
+		if not b.can_operate():
+			continue
+		print("Operating: ", b.config.id, " active=", b.active, " workers=", b.worker_ids.size())
+		var mult: float = b.level_multiplier()
+		var has_all_inputs := true
+		for resource_name in b.config.inputs:
+			var needed: float = b.config.inputs[resource_name] * mult
+			print("  needs ", needed, " of ", resource_name, " (has ", resources.get(resource_name, 0.0), ")")
+			if resources.get(resource_name, 0.0) < needed:
+				has_all_inputs = false
+				break
+		if not has_all_inputs:
+			print("  -> skipped (not enough inputs)")
+			continue
+		for resource_name in b.config.inputs:
+			var needed: float = b.config.inputs[resource_name] * mult
+			resources[resource_name] = resources.get(resource_name, 0.0) - needed
+		for resource_name in b.config.outputs:
+			var produced: float = b.config.outputs[resource_name] * mult
+			resources[resource_name] = resources.get(resource_name, 0.0) + produced
+			print("  produced ", produced, " of ", resource_name)

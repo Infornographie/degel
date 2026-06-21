@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://dxrx47erw4dow"]
+
+[ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_treeh"]
+
+[resource]
+script = ExtResource("1_treeh")
+id = "tool_workshop"
+name_key = "BUILDING_TOOL_WORKSHOP"
+build_cost = Dictionary[String, float]({
+"ore": 5.0,
+"wood": 5.0
+})
+build_order = Array[String](["ore", "wood", "ore", "wood"])
+inputs = Dictionary[String, float]({
+"ore": 3.0,
+"wood": 3.0
+})
+outputs = Dictionary[String, float]({
+"tools": 3.0
+})
+metadata/_custom_type_script = "uid://djgwy70yusm4w"

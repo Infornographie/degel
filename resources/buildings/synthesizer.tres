@@ -7,6 +7,9 @@ script = ExtResource("1_1jcwd")
 id = "synthesizer"
 name_key = "BUILDING_SYNTHESIZER"
 is_starter = true
+outputs = {
+"food": 1.0
+}
 workers_required = 0
 workers_max = 0
 can_run_on_electricity = true

@@ -299,12 +299,54 @@ func _add_generic_building_slot(b: Building) -> void:
 				GameState.set_active_construction(bid))
 	else:
 		# Bâtiment opérationnel
-		var info := Label.new()
-		info.text = tr("LABEL_OPERATIONAL")
-		info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		info.add_theme_font_size_override("font_size", 10)
-		info.modulate = Color(0.7, 0.7, 0.7)
-		vbox.add_child(info)
+		# Affichage des colons assignés
+		var workers_row := HBoxContainer.new()
+		workers_row.add_theme_constant_override("separation", 4)
+		workers_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		vbox.add_child(workers_row)
+		if b.worker_ids.is_empty():
+			var info := Label.new()
+			info.text = tr("LABEL_NO_WORKER")
+			info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			info.add_theme_font_size_override("font_size", 10)
+			info.modulate = Color(0.7, 0.7, 0.7)
+			vbox.add_child(info)
+		else:
+			for wid in b.worker_ids:
+				var s: Survivor = GameState.roster.get_by_id(wid)
+				if s != null:
+					workers_row.add_child(_make_assigned_worker_sprite(s))
+		# Bouton pour ouvrir le popup d'affectation
+		var assign_btn := Button.new()
+		assign_btn.text = tr("BTN_ASSIGN_WORKER")
+		assign_btn.add_theme_font_size_override("font_size", 10)
+		assign_btn.pressed.connect(func():
+			_open_building_popup(b, get_global_mouse_position()))
+		vbox.add_child(assign_btn)
+		# Affichage des inputs/outputs en icônes
+		if not b.config.inputs.is_empty() or not b.config.outputs.is_empty():
+			var io_row := HBoxContainer.new()
+			io_row.add_theme_constant_override("separation", 2)
+			io_row.alignment = BoxContainer.ALIGNMENT_CENTER
+			vbox.add_child(io_row)
+			# Inputs
+			for resource_name in b.config.inputs:
+				var amt: int = int(b.config.inputs[resource_name])
+				for i in amt:
+					var icon := _make_resource_icon(resource_name, 14)
+					io_row.add_child(icon)
+			# Flèche séparatrice si on a les deux
+			if not b.config.inputs.is_empty() and not b.config.outputs.is_empty():
+				var arrow := Label.new()
+				arrow.text = "→"
+				arrow.add_theme_font_size_override("font_size", 12)
+				io_row.add_child(arrow)
+			# Outputs
+			for resource_name in b.config.outputs:
+				var amt: int = int(b.config.outputs[resource_name])
+				for i in amt:
+					var icon := _make_resource_icon(resource_name, 14)
+					io_row.add_child(icon)
 
 func _find_starter(id: String) -> Building:
 	for b in GameState.buildings:
@@ -333,8 +375,13 @@ func _add_synth_slot(b: Building) -> void:
 	vbox.add_child(_slot_title(tr(b.config.name_key)))
 	var checkbox := CheckBox.new()
 	checkbox.text = tr("LABEL_SYNTH_RUNNING")
-	checkbox.set_pressed_no_signal(GameState.synth_on)
-	checkbox.toggled.connect(_on_synth_toggled)
+	checkbox.set_pressed_no_signal(b.active)
+	var bid := b.instance_id
+	checkbox.toggled.connect(func(pressed: bool):
+		var building := GameState._find_building_by_instance(bid)
+		if building != null:
+			building.active = pressed
+			_refresh())
 	vbox.add_child(checkbox)
 	var info := Label.new()
 	info.text = tr("LABEL_SYNTH_INFO")
@@ -582,7 +629,8 @@ func _rebuild_resources() -> void:
 	var elec_value: float = GameState.resources["electricity"]
 	var elec_parts: Array[String] = []
 	elec_parts.append(tr("LABEL_REACTOR") % GameState.reactor_output)
-	if GameState.synth_on:
+	var synth: Building = GameState._find_building_by_type("synthesizer")
+	if synth != null and synth.active:
 		elec_parts.append(tr("LABEL_SYNTH_COST") % GameState.SYNTH_ELECTRICITY_COST)
 	elec_parts.append(tr("LABEL_USABLE") % elec_value)
 	_add_label(_infos_section, tr("LABEL_ELEC_HEADER") + " | ".join(elec_parts))
@@ -802,8 +850,8 @@ func _make_survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
 	return sprite
 
 var _resources_bar: HBoxContainer
-const RESOURCE_ORDER: Array[String] = ["food", "wood", "ore"]
-const PRODUCTION_ORDER: Array[String] = ["food", "wood", "ore", "electricity", "heat"]
+const RESOURCE_ORDER: Array[String] = ["food", "wood", "ore", "tools"]
+const PRODUCTION_ORDER: Array[String] = ["food", "wood", "ore", "tools", "electricity", "heat"]
 const RESOURCE_SPRITE_PATH := "res://assets/resources/%s.png"
 const RESOURCE_SPRITE_SIZE: int = 32
 
@@ -888,10 +936,31 @@ func _compute_production(resource_name: String) -> float:
 	for s in GameState.awake_survivors():
 		var out: Dictionary = GameState.get_survivor_output(s)
 		total += out.get(resource_name, 0.0)
-	if resource_name == "food" and GameState.synth_on:
-		total += GameState.SYNTH_FOOD_OUTPUT
+	if resource_name == "food":
+		var synth: Building = GameState._find_building_by_type("synthesizer")
+		if synth != null and synth.active:
+			total += GameState.SYNTH_FOOD_OUTPUT
 	if resource_name == "electricity":
 		total += GameState.reactor_output
+	# Production par les bâtiments opérationnels
+	for b in GameState.buildings:
+		if b.state != Building.State.OPERATIONAL or not b.active:
+			continue
+		if b.config.id == "construction_zone" or b.config.id == "synthesizer":
+			continue
+		if not b.can_operate():
+			continue
+		# Vérifier qu'on a tous les inputs en stock
+		var has_inputs := true
+		for input_name in b.config.inputs:
+			var needed: float = b.config.inputs[input_name] * b.level_multiplier()
+			if GameState.resources.get(input_name, 0.0) < needed:
+				has_inputs = false
+				break
+		if not has_inputs:
+			continue
+		var output: float = b.config.outputs.get(resource_name, 0.0) * b.level_multiplier()
+		total += output
 	return total
 
 func _compute_consumption(resource_name: String) -> float:
@@ -900,12 +969,53 @@ func _compute_consumption(resource_name: String) -> float:
 		total += GameState.awake_count() * GameState.config.food_per_survivor
 	if resource_name == "electricity":
 		total += GameState.electricity_consumed_this_turn()
-		# Synthé : ajoute son coût *seulement s'il ne l'a pas encore consommé* (donc avant advance_turn)
-		# Vu qu'on a déjà tracké le synthé au moment d'advance_turn, c'est traité
-		# Mais le synthé est ON et n'a pas encore consommé ce tour-ci tant qu'on n'avance pas
-		if GameState.synth_on:
+		var synth: Building = GameState._find_building_by_type("synthesizer")
+		if synth != null and synth.active:
 			total += GameState.SYNTH_ELECTRICITY_COST
+	# Consommation par la construction du chantier actif
+	total += _construction_consumption(resource_name)
+	# Consommation par les bâtiments opérationnels
+	for b in GameState.buildings:
+		if b.state != Building.State.OPERATIONAL or not b.active:
+			continue
+		if b.config.id == "construction_zone":
+			continue
+		if not b.can_operate():
+			continue
+		var input: float = b.config.inputs.get(resource_name, 0.0) * b.level_multiplier()
+		total += input
 	return total
+
+## Calcule combien de ressources le chantier actif va consommer ce tour.
+func _construction_consumption(resource_name: String) -> float:
+	var zone: Building = GameState._find_building_by_type("construction_zone")
+	if zone == null or zone.construction_target == "":
+		return 0.0
+	var target: Building = GameState._find_building_by_instance(int(zone.construction_target))
+	if target == null or target.state != Building.State.UNDER_CONSTRUCTION:
+		return 0.0
+	# Force de travail réelle des colons assignés
+	var work: float = 0.0
+	for wid in zone.worker_ids:
+		var s: Survivor = GameState.roster.get_by_id(wid)
+		if s != null and s.awake:
+			work += s.work_force
+	if work <= 0.0:
+		return 0.0
+	var order: Array[String] = target.config.build_order
+	if order.is_empty():
+		order = target.config.build_cost.keys()
+	for r in order:
+		if work <= 0.0:
+			break
+		var needed: float = target.config.build_cost.get(r, 0.0) - target.build_resources_consumed.get(r, 0.0)
+		if needed <= 0.0:
+			continue
+		var to_consume: float = min(work, needed)
+		if r == resource_name:
+			return to_consume
+		work -= to_consume
+	return 0.0
 
 func _make_production_row(resource_name: String, produced: float, consumed: float) -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -1013,19 +1123,47 @@ func _add_construction_zone_slot(b: Building) -> void:
 			if s != null:
 				workers_row.add_child(_make_assigned_worker_sprite(s))
 	# Label de la cible courante
-	var target_label := Label.new()
 	if b.construction_target != "":
 		var target: Building = GameState._find_building_by_instance(int(b.construction_target))
 		if target != null:
+			var target_label := Label.new()
 			target_label.text = tr("LABEL_BUILDING_TARGET") % tr(target.config.name_key)
-		else:
-			target_label.text = tr("LABEL_NO_TARGET")
+			target_label.add_theme_font_size_override("font_size", 10)
+			target_label.modulate = Color(0.7, 0.7, 0.7)
+			target_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			vbox.add_child(target_label)
+			# Icônes de ce qui sera consommé ce tour
+			var icons_row := HBoxContainer.new()
+			icons_row.add_theme_constant_override("separation", 2)
+			icons_row.alignment = BoxContainer.ALIGNMENT_CENTER
+			vbox.add_child(icons_row)
+			var work: float = 0.0
+			for wid in b.worker_ids:
+				var s: Survivor = GameState.roster.get_by_id(wid)
+				if s != null and s.awake:
+					work += s.work_force
+			if work > 0.0:
+				var order: Array[String] = target.config.build_order
+				if order.is_empty():
+					order = target.config.build_cost.keys()
+				var work_left: float = work
+				for resource_name in order:
+					if work_left <= 0.0:
+						break
+					var needed: float = target.config.build_cost.get(resource_name, 0.0) - target.build_resources_consumed.get(resource_name, 0.0)
+					if needed <= 0.0:
+						continue
+					var to_consume: int = int(min(work_left, needed))
+					for i in to_consume:
+						icons_row.add_child(_make_production_icon(resource_name, "crossed"))
+					work_left -= to_consume
 	else:
-		target_label.text = tr("LABEL_NO_TARGET")
-	target_label.add_theme_font_size_override("font_size", 10)
-	target_label.modulate = Color(0.7, 0.7, 0.7)
-	target_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	vbox.add_child(target_label)
+		var no_target := Label.new()
+		no_target.text = tr("LABEL_NO_TARGET")
+		no_target.add_theme_font_size_override("font_size", 10)
+		no_target.modulate = Color(0.7, 0.7, 0.7)
+		no_target.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vbox.add_child(no_target)
 	# Bouton "Choisir une cible"
 	var choose_btn := Button.new()
 	choose_btn.text = tr("BTN_CHOOSE_TARGET")
