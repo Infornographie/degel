@@ -1281,6 +1281,15 @@ func _on_construction_target_pressed(b: Building) -> void:
 		_tile_popup.set_item_metadata(_tile_popup.item_count - 1, {"action": "clear_target"})
 		_tile_popup.add_separator()
 	for config in GameState.building_registry.constructibles():
+		# Si unique, exclure ceux déjà construits ou en construction
+		if config.unique:
+			var already_exists := false
+			for existing in GameState.buildings:
+				if existing.config.id == config.id and not existing.config.is_starter:
+					already_exists = true
+					break
+			if already_exists:
+				continue
 		var cost_parts: Array[String] = []
 		for resource_name in config.build_cost:
 			cost_parts.append("%d %s" % [int(config.build_cost[resource_name]), _resource_label(resource_name)])

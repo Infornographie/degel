@@ -10,7 +10,7 @@ build_cost = Dictionary[String, float]({
 "ore": 5.0,
 "wood": 5.0
 })
-build_order = Array[String](["ore", "wood", "ore", "wood"])
+build_order = Array[String](["ore", "wood"])
 inputs = Dictionary[String, float]({
 "ore": 3.0,
 "wood": 3.0

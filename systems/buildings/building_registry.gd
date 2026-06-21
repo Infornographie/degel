@@ -39,6 +39,9 @@ func starters() -> Array[BuildingConfig]:
 func constructibles() -> Array[BuildingConfig]:
 	var result: Array[BuildingConfig] = []
 	for config in configs.values():
-		if not config.is_starter:
-			result.append(config)
+		if config.is_starter:
+			continue
+		if not config.available:
+			continue
+		result.append(config)
 	return result

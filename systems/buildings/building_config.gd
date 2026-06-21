@@ -52,3 +52,9 @@ enum Family {
 @export var output_multiplier_per_level: float = 0.5
 ## +N colons assignables par niveau au-dessus de 1.
 @export var workers_max_increase_per_level: int = 1
+
+@export_group("Availability")
+## Est-ce que le bâtiment n'est constructible qu'en un seul exemplaire ?
+@export var unique: bool = true
+## Est-ce que le bâtiment est accessible à la construction ?
+@export var available: bool = true
