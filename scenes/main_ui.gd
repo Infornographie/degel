@@ -630,7 +630,8 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 			location_hint = "  " + tr("LABEL_HERE")
 		else:
 			location_hint = "  (" + tr("LABEL_IDLE") + ")"
-		_tile_popup.add_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint])
+		_tile_popup.add_submenu_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint], sub.name)
+		any_available = true
 
 	if not any_available and tile.worker_id == -1:
 		_tile_popup.add_item(tr("LABEL_NO_WORKER"))
