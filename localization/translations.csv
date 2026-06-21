@@ -123,3 +123,10 @@ LABEL_IN_SETTLEMENT_BRACKETS,(Colonie),(Settlement)
 LABEL_IN_SETTLEMENT,dans la colonie,in settlement
 LABEL_IDLE_IN_SETTLEMENT,inactif dans la colonie,idle in settlement
 LABEL_IDLE,inactif,idle
+ACTIVITY_GATHERING,Cueillette,Gathering
+ACTIVITY_HUNTING,Chasse,Hunting
+ACTIVITY_WOOD_PICKER,Ramasseur de bois,Wood picker
+ACTIVITY_LUMBERJACK,Bûcheron,Lumberjack
+ACTIVITY_FORESTER,Forestier,Forester
+ACTIVITY_GARDENER,Jardinier,Gardener
+ACTIVITY_ORE_PICKER,Ramasseur de minerai,Ore picker

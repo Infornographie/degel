@@ -2,6 +2,7 @@ extends Node
 ## GameState — cœur de la simulation (autoload).
 
 var production_system: ProductionSystem
+var activity_registry: ActivityRegistry
 
 enum EndCause { REACTOR_DEAD, COLONY_LOST }
 enum Job { IDLE, FARMER, LUMBERJACK, MINER }
@@ -90,6 +91,7 @@ func _ready() -> void:
 	hex_map = HexMap.new(2, tile_config)
 	production_system = ProductionSystem.new(hex_map, roster)
 	building_registry = BuildingRegistry.new()
+	activity_registry = ActivityRegistry.new()
 	_init_starter_buildings()
 	_refill_candidates()
 	_begin_turn()

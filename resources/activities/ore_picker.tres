@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Activity" format=3 uid="uid://dy7lu27u1ofao"]
+
+[ext_resource type="Script" uid="uid://pi3ffe2cp0cn" path="res://systems/world/activity.gd" id="1_gu3bd"]
+
+[resource]
+script = ExtResource("1_gu3bd")
+id = "ore_picker"
+name_key = "ACTIVITY_ORE_PICKER"
+allowed_tile_types = Array[int]([2, 3])
+metadata/_custom_type_script = "uid://pi3ffe2cp0cn"

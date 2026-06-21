@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Activity" format=3 uid="uid://bjpsj6lpi5344"]
+
+[ext_resource type="Script" uid="uid://pi3ffe2cp0cn" path="res://systems/world/activity.gd" id="1_i8exy"]
+
+[resource]
+script = ExtResource("1_i8exy")
+id = "wood_picker"
+name_key = "ACTIVITY_WOOD_PICKER"
+allowed_tile_types = Array[int]([1, 2, 3])
+metadata/_custom_type_script = "uid://pi3ffe2cp0cn"

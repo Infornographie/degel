@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Activity" format=3 uid="uid://cplhsixndbk7c"]
+
+[ext_resource type="Script" uid="uid://pi3ffe2cp0cn" path="res://systems/world/activity.gd" id="1_5cpua"]
+
+[resource]
+script = ExtResource("1_5cpua")
+id = "lumberjack"
+name_key = "ACTIVITY_LUMBERJACK"
+allowed_tile_types = Array[int]([2])
+inputs = Dictionary[String, float]({
+"tools": 1.0
+})
+tile_health_delta = 1
+metadata/_custom_type_script = "uid://pi3ffe2cp0cn"

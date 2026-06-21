@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="Activity" format=3 uid="uid://bs68an4h3uwmq"]
+
+[ext_resource type="Script" uid="uid://pi3ffe2cp0cn" path="res://systems/world/activity.gd" id="1_k2qqq"]
+
+[resource]
+script = ExtResource("1_k2qqq")
+id = "gardener"
+name_key = "ACTIVITY_GARDENER"
+allowed_tile_types = Array[int]([1])
+metadata/_custom_type_script = "uid://pi3ffe2cp0cn"
