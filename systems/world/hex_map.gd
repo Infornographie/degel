@@ -57,27 +57,7 @@ func _generate() -> void:
 		_assign_yields(tile)
 
 func _assign_yields(tile: HexTile) -> void:
-	match tile.type:
-		HexTile.Type.PLAINS:
-			tile.yields = {
-				GameState.Job.FARMER: config.plains_food,
-				GameState.Job.LUMBERJACK: config.plains_wood,
-				GameState.Job.MINER: config.plains_ore,
-			}
-		HexTile.Type.FOREST:
-			tile.yields = {
-				GameState.Job.FARMER: config.forest_food,
-				GameState.Job.LUMBERJACK: config.forest_wood,
-				GameState.Job.MINER: config.forest_ore,
-			}
-		HexTile.Type.MOUNTAIN:
-			tile.yields = {
-				GameState.Job.FARMER: config.mountain_food,
-				GameState.Job.LUMBERJACK: config.mountain_wood,
-				GameState.Job.MINER: config.mountain_ore,
-			}
-		_:
-			tile.yields = {}   # bunker : aucun rendement
+	tile.yields = config.yields_for_tile(tile.type)
 
 func get_tile(q: int, r: int) -> HexTile:
 	return tiles.get(HexTile.make_key(q, r))

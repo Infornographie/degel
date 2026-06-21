@@ -6,5 +6,21 @@
 script = ExtResource("1_s4xpt")
 plains_ratio = 0.0
 forest_ratio = 0.8
-forest_food = 3.0
+plains_yields = Dictionary[String, float]({
+"gardener": 4.0,
+"gathering": 2.0,
+"wood_picker": 1.0
+})
+forest_yields = Dictionary[String, float]({
+"gathering": 3.0,
+"hunting": 6.0,
+"lumberjack": 6.0,
+"ore_picker": 1.0,
+"wood_picker": 3.0
+})
+mountain_yields = Dictionary[String, float]({
+"gathering": 1.0,
+"ore_picker": 4.0,
+"wood_picker": 1.0
+})
 metadata/_custom_type_script = "uid://ob78017rha5x"

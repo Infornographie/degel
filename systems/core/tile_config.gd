@@ -1,25 +1,19 @@
 extends Resource
 class_name TileConfig
-## Configuration des tuiles : ratios de génération et rendements par job.
+## Configuration des tuiles : ratios de génération et rendements par activité.
 
 @export_group("Generation ratios")
-## Proportion de plaines parmi les tuiles non-bunker.
 @export var plains_ratio: float = 0.40
-## Proportion de forêts parmi les tuiles non-bunker.
 @export var forest_ratio: float = 0.40
-# Le reste devient montagne.
 
-@export_group("Plains yields per job")
-@export var plains_food: float = 4.0
-@export var plains_wood: float = 1.0
-@export var plains_ore: float = 0.0
+@export_group("Yields by activity")
+@export var plains_yields: Dictionary[String, float] = {}
+@export var forest_yields: Dictionary[String, float] = {}
+@export var mountain_yields: Dictionary[String, float] = {}
 
-@export_group("Forest yields per job")
-@export var forest_food: float = 2.0
-@export var forest_wood: float = 4.0
-@export var forest_ore: float = 1.0
-
-@export_group("Mountain yields per job")
-@export var mountain_food: float = 1.0
-@export var mountain_wood: float = 1.0
-@export var mountain_ore: float = 4.0
+func yields_for_tile(tile_type: int) -> Dictionary:
+	match tile_type:
+		HexTile.Type.PLAINS: return plains_yields
+		HexTile.Type.FOREST: return forest_yields
+		HexTile.Type.MOUNTAIN: return mountain_yields
+		_: return {}
