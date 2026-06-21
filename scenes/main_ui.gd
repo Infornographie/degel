@@ -261,11 +261,7 @@ func _add_generic_building_slot(b: Building) -> void:
 		status.add_theme_font_size_override("font_size", 10)
 		status.modulate = Color(0.7, 0.7, 0.7)
 		vbox.add_child(status)
-		# Icônes des ressources restantes
-		var icons_row := HBoxContainer.new()
-		icons_row.add_theme_constant_override("separation", 2)
-		icons_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		vbox.add_child(icons_row)
+		# Icônes des ressources restantes — une ligne par ressource, resserrement si trop
 		var order: Array[String] = b.config.build_order
 		if order.is_empty():
 			order = b.config.build_cost.keys()
@@ -273,8 +269,22 @@ func _add_generic_building_slot(b: Building) -> void:
 			var needed: float = b.config.build_cost.get(resource_name, 0.0)
 			var consumed: float = b.build_resources_consumed.get(resource_name, 0.0)
 			var remaining: int = int(needed - consumed)
+			if remaining <= 0:
+				continue
+			var row := HBoxContainer.new()
+			row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			# Resserrement
+			var separation: int = 2
+			if remaining > 6:
+				var icon_size: int = 16
+				var target_width: float = 6.0 * (icon_size + 2)
+				var needed_width: float = remaining * icon_size
+				var overlap: float = (needed_width - target_width) / max(1, remaining - 1)
+				separation = int(-overlap)
+			row.add_theme_constant_override("separation", separation)
 			for i in remaining:
-				icons_row.add_child(_make_resource_icon(resource_name, 16))
+				row.add_child(_make_resource_icon(resource_name, 16))
+			vbox.add_child(row)
 		# Indique si c'est la cible active
 		var zone: Building = GameState._find_building("construction_zone")
 		var is_active: bool = (zone != null and zone.construction_target == str(b.instance_id))
