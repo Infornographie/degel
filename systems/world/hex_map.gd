@@ -79,3 +79,9 @@ func workable_tiles() -> Array[HexTile]:
 		if tile.type != HexTile.Type.BUNKER:
 			result.append(tile)
 	return result
+
+## Change le type d'une tuile et met à jour ses rendements.
+func mutate_tile(tile: HexTile, new_type: int) -> void:
+	tile.type = new_type
+	tile.health = 0
+	_assign_yields(tile)

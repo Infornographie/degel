@@ -75,6 +75,9 @@ func resolve(resources: Dictionary, multiplier: float) -> Array:
 				"activity_key": activity.name_key,
 			})
 			continue
+		# Effet sur la tuile (dégradation / restauration)
+		if activity.tile_health_delta != 0:
+			tile.health = max(0, tile.health + activity.tile_health_delta)
 		# Production
 		if activity.produced_resource == "":
 			continue
@@ -83,7 +86,19 @@ func resolve(resources: Dictionary, multiplier: float) -> Array:
 			continue
 		var produced: float = _apply_multiplier(raw, multiplier)
 		resources[activity.produced_resource] = resources.get(activity.produced_resource, 0.0) + produced
+	for tile in hex_map.tiles.values():
+		if tile.type == HexTile.Type.FOREST and tile.health >= 5:
+			_mutate_to_plains(tile)
+			events.append({
+				"type": "tile_mutated",
+				"from": "forest",
+				"to": "plains",
+				"tile_key": tile.key(),
+			})
 	return events
+
+func _mutate_to_plains(tile: HexTile) -> void:
+	hex_map.mutate_tile(tile, HexTile.Type.PLAINS)
 
 func _apply_multiplier(raw: float, multiplier: float) -> float:
 	if multiplier >= 1.0:

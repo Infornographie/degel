@@ -12,6 +12,7 @@ var worker_id: int = -1
 # Rendements par job, rempli à la génération depuis le TileConfig.
 # Forme : { GameState.Job.FARMER: 4.0, GameState.Job.LUMBERJACK: 1.0, ... }
 var yields: Dictionary = {}
+var health: int = 0   # 0 = état initial, +1 par bûcheron, -1 par forestier
 
 func _init(p_q: int, p_r: int) -> void:
 	q = p_q
