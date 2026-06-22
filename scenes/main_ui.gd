@@ -1041,15 +1041,49 @@ func _rebuild_production() -> void:
 		return
 	for child in _production_section.get_children():
 		child.queue_free()
+	_production_section.add_child(_make_production_header())
 	for resource_name in PRODUCTION_ORDER:
-		var produced: float = _compute_production(resource_name)
-		var consumed: float = _compute_consumption(resource_name)
-		if produced == 0.0 and consumed == 0.0:
+		var flow: Dictionary = _compute_resource_flow(resource_name)
+		var production: float = flow["production"]
+		var impossible: float = flow["impossible"]
+		var consumption: float = flow["consumption"]
+		if production == 0.0 and consumption == 0.0 and impossible == 0.0:
 			continue
-		_production_section.add_child(_make_production_row(resource_name, produced, consumed))
+		_production_section.add_child(_make_production_row(resource_name, production, consumption, impossible))
 	# Lignes pour les activités à risque (chasse, etc.)
-	for row in _gather_risky_activities():
-		_production_section.add_child(_make_risky_row(row))
+	var risky := _gather_risky_activities()
+	if not risky.is_empty():
+		var sep := HSeparator.new()
+		sep.add_theme_constant_override("separation", 4)
+		_production_section.add_child(sep)
+		var title := Label.new()
+		title.text = tr("PROD_RISKY_TITLE")
+		title.add_theme_font_size_override("font_size", 10)
+		title.modulate = Color(1, 1, 1, 0.7)
+		_production_section.add_child(title)
+		for row_data in risky:
+			_production_section.add_child(_make_risky_row(row_data))
+
+func _make_production_header() -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", COLUMN_GAP)
+	row.modulate = Color(1, 1, 1, 0.6)
+	var spacer := Label.new()
+	spacer.text = ""
+	spacer.custom_minimum_size = Vector2(40, 0)
+	row.add_child(spacer)
+	row.add_child(_make_header_label(tr("PROD_HEADER_CONSUMED")))
+	row.add_child(_make_header_label(tr("PROD_HEADER_DELTA")))
+	row.add_child(_make_header_label(tr("PROD_HEADER_IMPOSSIBLE")))
+	return row
+
+func _make_header_label(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 9)
+	label.custom_minimum_size = Vector2(80, 0)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	return label
 
 func _make_risky_row(row: Dictionary) -> HBoxContainer:
 	var container := HBoxContainer.new()
@@ -1070,23 +1104,51 @@ func _make_risky_row(row: Dictionary) -> HBoxContainer:
 		icons.add_child(_make_resource_icon(activity.produced_resource, PRODUCTION_ICON_SIZE))
 	return container
 
-func _compute_production(resource_name: String) -> float:
-	var total: float = 0.0
+## Retourne un Dictionary avec : production (qui peut opérer),
+## impossible (qui voudrait mais bloqué), consumption.
+func _compute_resource_flow(resource_name: String) -> Dictionary:
+	var production: float = 0.0
+	var impossible: float = 0.0
+	var consumption: float = 0.0
+	# --- PRODUCTION ---
+	# Colons sur tuiles (hors risky)
 	for s in GameState.awake_survivors():
-		# Exclure les activités à risque, qui auront leur ligne dédiée
-		if s.activity_id != "":
-			var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
-			if activity != null and activity.success_rate < 1.0:
-				continue
-		var out: Dictionary = GameState.get_survivor_output(s)
-		total += out.get(resource_name, 0.0)
+		if s.activity_id == "":
+			continue
+		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
+		if activity == null:
+			continue
+		if activity.success_rate < 1.0:
+			continue  # géré dans risky
+		if activity.produced_resource != resource_name:
+			continue
+		var raw: float = 0.0
+		if s.tile_key != "":
+			var tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
+			if tile != null:
+				raw = tile.yields.get(s.activity_id, 0.0)
+		if raw <= 0.0:
+			continue
+		# Vérifier les inputs disponibles
+		var has_inputs := true
+		for input_name in activity.inputs:
+			if GameState.resources.get(input_name, 0.0) < activity.inputs[input_name]:
+				has_inputs = false
+				break
+		if has_inputs:
+			production += raw
+		else:
+			impossible += raw
+	# Synth (production food)
 	if resource_name == "food":
 		var synth: Building = GameState._find_building_by_type("synthesizer")
 		if synth != null and synth.active:
-			total += GameState.SYNTH_FOOD_OUTPUT
+			production += GameState.SYNTH_FOOD_OUTPUT
+	# Réacteur (production electricity)
 	if resource_name == "electricity":
-		total += GameState.reactor_output
-	# Production par les bâtiments opérationnels
+		production += GameState.reactor_output
+	# Bâtiments opérationnels
+	# Bâtiments opérationnels
 	for b in GameState.buildings:
 		if b.state != Building.State.OPERATIONAL or not b.active:
 			continue
@@ -1094,17 +1156,53 @@ func _compute_production(resource_name: String) -> float:
 			continue
 		if not b.can_operate():
 			continue
-		var has_inputs := true
+		var output: float = b.config.outputs.get(resource_name, 0.0) * b.level_multiplier()
+		if output <= 0.0:
+			continue
+		# Calcule l'operation_factor comme dans _resolve_buildings_operation
+		var operation_factor: float = 1.0
 		for input_name in b.config.inputs:
 			var needed: float = b.config.inputs[input_name] * b.level_multiplier()
-			if GameState.resources.get(input_name, 0.0) < needed:
-				has_inputs = false
-				break
-		if not has_inputs:
+			if needed <= 0.0:
+				continue
+			var available: float = GameState.resources.get(input_name, 0.0)
+			operation_factor = min(operation_factor, available / needed)
+		# Part effectivement produite et part impossible
+		var effective_output: float = output * operation_factor
+		production += effective_output
+		impossible += output - effective_output
+	# --- CONSOMMATION ---
+	if resource_name == "food":
+		consumption += GameState.awake_count() * GameState.config.food_per_survivor
+	if resource_name == "electricity":
+		consumption += GameState.electricity_consumed_this_turn()
+		var synth: Building = GameState._find_building_by_type("synthesizer")
+		if synth != null and synth.active:
+			consumption += GameState.SYNTH_ELECTRICITY_COST
+	# Activités sur tuiles
+	for s in GameState.awake_survivors():
+		if s.activity_id == "":
 			continue
-		var output: float = b.config.outputs.get(resource_name, 0.0) * b.level_multiplier()
-		total += output
-	return total
+		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
+		if activity == null:
+			continue
+		consumption += activity.inputs.get(resource_name, 0.0)
+	# Construction
+	consumption += _construction_consumption(resource_name)
+	# Bâtiments opérationnels
+	for b in GameState.buildings:
+		if b.state != Building.State.OPERATIONAL or not b.active:
+			continue
+		if b.config.id == "construction_zone":
+			continue
+		if not b.can_operate():
+			continue
+		consumption += b.config.inputs.get(resource_name, 0.0) * b.level_multiplier()
+	return {
+		"production": production,
+		"impossible": impossible,
+		"consumption": consumption,
+	}
 
 func _gather_risky_activities() -> Array:
 	# Retourne une liste de { activity, count, tile_amount }
@@ -1126,37 +1224,6 @@ func _gather_risky_activities() -> Array:
 			"survivor": s,
 		})
 	return rows
-
-func _compute_consumption(resource_name: String) -> float:
-	var total: float = 0.0
-	if resource_name == "food":
-		total += GameState.awake_count() * GameState.config.food_per_survivor
-	if resource_name == "electricity":
-		total += GameState.electricity_consumed_this_turn()
-		var synth: Building = GameState._find_building_by_type("synthesizer")
-		if synth != null and synth.active:
-			total += GameState.SYNTH_ELECTRICITY_COST
-	# Consommation par les activités sur tuiles
-	for s in GameState.awake_survivors():
-		if s.activity_id == "":
-			continue
-		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
-		if activity == null:
-			continue
-		total += activity.inputs.get(resource_name, 0.0)
-	# Consommation par la construction
-	total += _construction_consumption(resource_name)
-	# Consommation par les bâtiments opérationnels
-	for b in GameState.buildings:
-		if b.state != Building.State.OPERATIONAL or not b.active:
-			continue
-		if b.config.id == "construction_zone":
-			continue
-		if not b.can_operate():
-			continue
-		var input: float = b.config.inputs.get(resource_name, 0.0) * b.level_multiplier()
-		total += input
-	return total
 
 ## Calcule combien de ressources le chantier actif va consommer ce tour.
 func _construction_consumption(resource_name: String) -> float:
@@ -1189,40 +1256,71 @@ func _construction_consumption(resource_name: String) -> float:
 		work -= to_consume
 	return 0.0
 
-func _make_production_row(resource_name: String, produced: float, consumed: float) -> HBoxContainer:
+const COLUMN_GAP: int = 20
+const NON_STORABLE_RESOURCES: Array[String] = ["electricity", "heat"]
+
+func _make_production_row(resource_name: String, production: float, consumption: float, impossible: float) -> HBoxContainer:
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# Total net en chiffre
-	var net: float = produced - consumed
+	row.add_theme_constant_override("separation", COLUMN_GAP)
+	# Calcul des 3 catégories visibles
+	var prod_int: int = int(production)
+	var cons_int: int = int(consumption)
+	var imp_int: int = int(impossible)
+	var covered: int = min(prod_int, cons_int)  # part conso couverte
+	var surplus: int = max(0, prod_int - cons_int)
+	var deficit: int = max(0, cons_int - prod_int)
+	# Colonne 1 : net chiffré
+	var net: float = production - consumption
 	var net_label := Label.new()
-	net_label.text = "  %+.0f  " % net
+	net_label.text = "%+d" % int(net)
 	net_label.add_theme_font_size_override("font_size", 14)
-	net_label.custom_minimum_size = Vector2(60, 0)
+	net_label.custom_minimum_size = Vector2(40, 0)
+	net_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	row.add_child(net_label)
-	# Container des icônes avec separation négative si trop d'icônes
-	var icons := HBoxContainer.new()
-	icons.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(icons)
-	var produced_int: int = int(produced)
-	var consumed_int: int = int(consumed)
-	var icon_count: int = max(produced_int, consumed_int)
-	# Calcul de séparation : si plus de 8 icônes, on commence à les superposer
-	var separation: int = 4
-	if icon_count > 8:
-		# On veut tenir dans environ 8 × (icon_size + 4) px de large
-		var target_width: float = 8.0 * (PRODUCTION_ICON_SIZE + 4)
-		var needed_width: float = icon_count * PRODUCTION_ICON_SIZE
-		var overlap_per_icon: float = (needed_width - target_width) / max(1, icon_count - 1)
-		separation = int(-overlap_per_icon)
-	icons.add_theme_constant_override("separation", separation)
-	for i in icon_count:
-		var overlay := ""
-		if i >= produced_int:
-			overlay = "crossed"
-		elif i >= consumed_int:
-			overlay = "surplus"
-		icons.add_child(_make_production_icon(resource_name, overlay))
+	# Colonne 2 : consommé couvert
+	row.add_child(_make_icon_column(resource_name, covered, ""))
+	# Colonne 3 : surplus OU déficit
+	# Colonne 3 : surplus OU déficit (stock)
+	if surplus > 0:
+		row.add_child(_make_icon_column(resource_name, surplus, "surplus"))
+	elif deficit > 0 and not (resource_name in NON_STORABLE_RESOURCES):
+		row.add_child(_make_icon_column(resource_name, deficit, "deficit"))
+	else:
+		row.add_child(_make_empty_column())
+	# Colonne 4 : impossible (faute d'inputs) + déficit non-stockable
+	var total_impossible: int = imp_int
+	if deficit > 0 and resource_name in NON_STORABLE_RESOURCES:
+		total_impossible += deficit
+	if total_impossible > 0:
+		row.add_child(_make_icon_column(resource_name, total_impossible, "crossed"))
+	else:
+		row.add_child(_make_empty_column())
+	# Colonne 4 : impossible
+	if imp_int > 0:
+		row.add_child(_make_icon_column(resource_name, imp_int, "crossed"))
+	else:
+		row.add_child(_make_empty_column())
 	return row
+
+func _make_empty_column() -> Control:
+	var ctl := Control.new()
+	ctl.custom_minimum_size = Vector2(80, PRODUCTION_ICON_SIZE)
+	return ctl
+
+func _make_icon_column(resource_name: String, count: int, overlay: String) -> HBoxContainer:
+	var col := HBoxContainer.new()
+	col.custom_minimum_size = Vector2(80, PRODUCTION_ICON_SIZE)
+	# Resserrement si trop d'icônes
+	var separation: int = 2
+	if count > 4:
+		var target_width: float = 4.0 * (PRODUCTION_ICON_SIZE + 2)
+		var needed_width: float = count * PRODUCTION_ICON_SIZE
+		separation = int(-((needed_width - target_width) / max(1, count - 1)))
+	col.add_theme_constant_override("separation", separation)
+	for i in count:
+		col.add_child(_make_production_icon(resource_name, overlay))
+	return col
 
 func _make_resource_icon(resource_name: String, icon_size: int) -> Control:
 	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
@@ -1239,7 +1337,7 @@ func _make_resource_icon(resource_name: String, icon_size: int) -> Control:
 	return placeholder
 
 const OVERLAY_PATH := "res://assets/resources/%s.png"
-const PRODUCTION_ICON_SIZE: int = 24
+const PRODUCTION_ICON_SIZE: int = 32
 
 func _make_production_icon(resource_name: String, overlay: String) -> Control:
 	# On empile l'icône de la ressource et un overlay éventuel
@@ -1259,13 +1357,12 @@ func _make_production_icon(resource_name: String, overlay: String) -> Control:
 			ov.position = Vector2.ZERO
 			stack.add_child(ov)
 		else:
-			# Placeholder coloré semi-transparent
 			var ph := ColorRect.new()
 			ph.custom_minimum_size = Vector2(PRODUCTION_ICON_SIZE, PRODUCTION_ICON_SIZE)
-			if overlay == "surplus":
-				ph.color = Color(0.4, 1.0, 0.4, 0.5)
-			else:
-				ph.color = Color(1.0, 0.3, 0.3, 0.6)
+			match overlay:
+				"surplus": ph.color = Color(0.4, 1.0, 0.4, 0.5)   # vert
+				"deficit": ph.color = Color(1.0, 0.7, 0.2, 0.5)   # orange (puisé sur réserve)
+				_: ph.color = Color(1.0, 0.3, 0.3, 0.6)            # rouge (manquant)
 			ph.position = Vector2.ZERO
 			stack.add_child(ph)
 	return stack

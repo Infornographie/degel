@@ -130,3 +130,7 @@ ACTIVITY_LUMBERJACK,Bûcheron,Lumberjack
 ACTIVITY_FORESTER,Forestier,Forester
 ACTIVITY_GARDENER,Jardinier,Gardener
 ACTIVITY_ORE_PICKER,Ramasseur de minerai,Ore picker
+PROD_HEADER_CONSUMED,Consommé,Consumed
+PROD_HEADER_DELTA,Stock,Stock
+PROD_HEADER_IMPOSSIBLE,Impossible,Impossible
+PROD_RISKY_TITLE,Production aléatoire,Random production
