@@ -6,6 +6,7 @@ var id: int
 var name: String
 var profession: String
 var awake: bool = false
+var wake_order: int = -1   # ordre de réveil, -1 = pas encore éveillé
 var activity_id: String = ""   # vide = pas d'activité (IDLE)
 var tile_key: String = ""   # tuile où il travaille, "" si au bunker
 var building_id: String = ""   # bâtiment où il travaille, "" si pas en bâtiment

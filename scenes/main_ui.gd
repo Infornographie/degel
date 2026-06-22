@@ -754,13 +754,15 @@ func _aggregate_production(resource_name: String) -> float:
 func _rebuild_lists() -> void:
 	for child in _awake_list.get_children():
 		child.queue_free()
-	var awake_count := 0
+	var awake_sorted: Array[Survivor] = []
 	for s in GameState.survivors():
 		if s.awake:
-			_add_awake_row(s)
-			awake_count += 1
-	_awake_header.text = tr("LABEL_AWAKE") % awake_count
-	if awake_count == 0:
+			awake_sorted.append(s)
+	awake_sorted.sort_custom(func(a, b): return a.wake_order < b.wake_order)
+	for s in awake_sorted:
+		_add_awake_row(s)
+	_awake_header.text = tr("LABEL_AWAKE") % awake_sorted.size()
+	if awake_sorted.is_empty():
 		_add_label(_awake_list, tr("LABEL_NOBODY_AWAKE"))
 
 func _add_awake_row(s: Survivor) -> void:

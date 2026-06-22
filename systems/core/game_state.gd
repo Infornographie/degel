@@ -57,6 +57,7 @@ const SYNTH_FOOD_OUTPUT: float = 1.0
 
 # --- Réveils ---
 var _wakes_done_this_turn: int = 0
+var _next_wake_order: int = 0
 
 # --- Famine ---
 var famine_turns: int = 0
@@ -123,6 +124,8 @@ func wake(id: int) -> bool:
 	_electricity_consumed_this_turn += config.wake_cost
 	_wakes_done_this_turn += 1
 	s.awake = true
+	s.wake_order = _next_wake_order
+	_next_wake_order += 1
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()
@@ -410,6 +413,8 @@ func targeted_wake(profession: String) -> bool:
 		resources_changed.emit(resources)
 		return false
 	s.awake = true
+	s.wake_order = _next_wake_order
+	_next_wake_order += 1
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()
