@@ -7,5 +7,6 @@ script = ExtResource("1_p4vli")
 id = "hunting"
 name_key = "ACTIVITY_HUNTING"
 allowed_tile_types = Array[int]([2])
+produced_resource = "food"
 success_rate = 0.3
 metadata/_custom_type_script = "uid://pi3ffe2cp0cn"

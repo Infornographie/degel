@@ -7,4 +7,5 @@ script = ExtResource("1_i8exy")
 id = "wood_picker"
 name_key = "ACTIVITY_WOOD_PICKER"
 allowed_tile_types = Array[int]([1, 2, 3])
+produced_resource = "wood"
 metadata/_custom_type_script = "uid://pi3ffe2cp0cn"

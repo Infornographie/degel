@@ -13,8 +13,9 @@ class_name Activity
 @export var allowed_tile_types: Array[int] = []
 
 @export_group("Production")
-## Ressources consommées chaque tour (ex: outils pour le bûcheron).
 @export var inputs: Dictionary[String, float] = {}
+## Ressource produite par cette activité.
+@export var produced_resource: String = ""
 
 @export_group("Success / Failure")
 ## Probabilité de succès, entre 0.0 et 1.0. À 1.0, l'activité est sûre.

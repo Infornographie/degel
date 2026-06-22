@@ -7,4 +7,5 @@ script = ExtResource("1_k2qqq")
 id = "gardener"
 name_key = "ACTIVITY_GARDENER"
 allowed_tile_types = Array[int]([1])
+produced_resource = "food"
 metadata/_custom_type_script = "uid://pi3ffe2cp0cn"

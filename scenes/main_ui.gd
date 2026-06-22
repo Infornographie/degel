@@ -454,13 +454,49 @@ func _add_label(parent: Node, text: String) -> Label:
 
 func _draw_map() -> void:
 	for child in _map_container.get_children():
+		_map_container.remove_child(child)
 		child.queue_free()
 	var origin := _map_container.size * 0.5
 	if origin.x == 0:
 		origin = Vector2(160, 160)
+	# Première passe : les hexagones de fond
 	for tile in GameState.hex_map.tiles.values():
 		var pixel := _hex_to_pixel(tile.q, tile.r) + origin
-		_add_hex(tile, pixel)
+		_draw_hex_background(tile, pixel)
+	# Deuxième passe : les workers et leurs productions, par-dessus
+	for tile in GameState.hex_map.tiles.values():
+		var pixel := _hex_to_pixel(tile.q, tile.r) + origin
+		if tile.worker_id != -1:
+			_render_tile_worker(tile, pixel)
+
+func _draw_hex_background(tile: HexTile, center: Vector2) -> void:
+	var hex := Polygon2D.new()
+	hex.polygon = _hex_polygon_points()
+	hex.color = TILE_COLORS.get(tile.type, Color.GRAY)
+	hex.position = center
+	var click_area := Control.new()
+	var bbox: float = HEX_RADIUS * 2.0
+	click_area.size = Vector2(bbox, bbox)
+	click_area.position = center - Vector2(HEX_RADIUS, HEX_RADIUS)
+	click_area.mouse_filter = Control.MOUSE_FILTER_STOP
+	_map_container.add_child(hex)
+	_map_container.add_child(click_area)
+	if tile.type != HexTile.Type.BUNKER:
+		var tkey := tile.key()
+		click_area.gui_input.connect(func(event: InputEvent):
+			if event is InputEventMouseButton and event.pressed:
+				if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
+					_open_tile_popup(tkey, event.global_position))
+	if tile.worker_id == -1:
+		var label := Label.new()
+		label.text = tr(TILE_LABEL_KEYS.get(tile.type, "")).substr(0, 1)
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		label.size = Vector2(bbox, bbox)
+		label.position = center - Vector2(HEX_RADIUS, HEX_RADIUS)
+		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		label.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
+		_map_container.add_child(label)
 
 func _hex_to_pixel(q: int, r: int) -> Vector2:
 	# Pointy-top hex layout
@@ -492,50 +528,52 @@ func _hex_polygon_points() -> PackedVector2Array:
 		points.append(Vector2(cos(angle), sin(angle)) * HEX_RADIUS)
 	return points
 
-func _add_hex(tile: HexTile, center: Vector2) -> void:
-	# Polygone hexagonal
-	var hex := Polygon2D.new()
-	hex.polygon = _hex_polygon_points()
-	hex.color = TILE_COLORS.get(tile.type, Color.GRAY)
-	hex.position = center
-	# Container pour gérer les clics (Polygon2D ne reçoit pas les events GUI directement)
-	var click_area := Control.new()
-	var bbox: float = HEX_RADIUS * 2.0
-	click_area.size = Vector2(bbox, bbox)
-	click_area.position = center - Vector2(HEX_RADIUS, HEX_RADIUS)
-	click_area.mouse_filter = Control.MOUSE_FILTER_STOP
-	_map_container.add_child(hex)
-	_map_container.add_child(click_area)
-	if tile.type != HexTile.Type.BUNKER:
-		var tkey := tile.key()
-		click_area.gui_input.connect(func(event: InputEvent):
-			if event is InputEventMouseButton and event.pressed:
-				if event.button_index == MOUSE_BUTTON_LEFT or event.button_index == MOUSE_BUTTON_RIGHT:
-					_open_tile_popup(tkey, event.global_position))
-	# Affichage du worker + production
-	if tile.worker_id != -1:
-		_render_tile_worker(tile, center)
-	else:
-		# Pas de worker : on affiche la lettre du type, discrète
-		var label := Label.new()
-		label.text = tr(TILE_LABEL_KEYS.get(tile.type, "")).substr(0, 1)
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.size = Vector2(bbox, bbox)
-		label.position = center - Vector2(HEX_RADIUS, HEX_RADIUS)
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.add_theme_color_override("font_color", Color(1, 1, 1, 0.5))
-		_map_container.add_child(label)
-
 const TILE_PROD_ICON_SIZE: int = 14
 
 func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
 	var s: Survivor = GameState.roster.get_by_id(tile.worker_id)
 	if s == null:
 		return
+	# Détecte si activité risquée
+	var is_risky := false
+	var risky_amount: int = 0
+	var risky_resource: String = ""
+	var risky_rate: float = 1.0
+	if s.activity_id != "":
+		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
+		if activity != null and activity.success_rate < 1.0:
+			is_risky = true
+			risky_amount = int(tile.yields.get(s.activity_id, 0.0))
+			risky_resource = activity.produced_resource
+			risky_rate = activity.success_rate
 	var out: Dictionary = GameState.get_survivor_output(s)
-	# Icônes de production EN FOND, derrière le sprite
-	if not out.is_empty():
+	# Icônes de production EN FOND
+	if is_risky and risky_amount > 0:
+		# Calcule la séparation
+		var total: int = risky_amount
+		var separation: int = 0
+		if total > 3:
+			var icon_size: int = TILE_PROD_ICON_SIZE
+			var target_width: float = 3.0 * icon_size
+			var needed_width: float = total * icon_size
+			separation = int(-((needed_width - target_width) / max(1, total - 1)))
+		var icons_row := HBoxContainer.new()
+		icons_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icons_row.add_theme_constant_override("separation", separation)
+		for i in risky_amount:
+			icons_row.add_child(_make_resource_icon(risky_resource, TILE_PROD_ICON_SIZE))
+		var pct := Label.new()
+		pct.text = " %d%%" % int(risky_rate * 100)
+		pct.add_theme_font_size_override("font_size", 9)
+		pct.add_theme_color_override("font_color", Color(1, 1, 1, 0.85))
+		pct.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icons_row.add_child(pct)
+		# Calcule la largeur effective et centre manuellement
+		var effective_icon_width: int = TILE_PROD_ICON_SIZE + separation
+		var total_width: float = risky_amount * effective_icon_width + 20  # +20 pour le label %
+		icons_row.position = center - Vector2(total_width * 0.5, HEX_RADIUS * 0.7)
+		_map_container.add_child(icons_row)
+	elif not out.is_empty():
 		var icons_row := HBoxContainer.new()
 		icons_row.alignment = BoxContainer.ALIGNMENT_CENTER
 		icons_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -606,13 +644,17 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		_tile_popup.add_child(sub)
 		_popup_submenus.append(sub)
 
-		var jobs: Array[int] = [GameState.Job.FARMER, GameState.Job.LUMBERJACK, GameState.Job.MINER]
-		for job_id in jobs:
-			var yield_val: float = tile.yields.get(job_id, 0.0)
-			var resource_name: String = ProductionSystem.JOB_RESOURCE.get(job_id, "")
-			var label_text := "%s  (+%.0f %s)" % [_activity_for_job_tile(job_id, tile.type),yield_val,_resource_label(resource_name)]
+		for activity in GameState.activity_registry.available_for_tile(tile.type):
+			var yield_val: float = tile.yields.get(activity.id, 0.0)
+			# On ne propose que les activités qui produisent quelque chose sur cette tuile.
+			# (Forester n'a pas de yield, mais on le proposera explicitement — voir plus bas.)
+			var label_text: String
+			if activity.success_rate < 1.0:
+				label_text = "%s  (+%.0f, %d%%)" % [tr(activity.name_key), yield_val, int(activity.success_rate * 100)]
+			else:
+				label_text = "%s  (+%.0f)" % [tr(activity.name_key), yield_val]
 			sub.add_item(label_text)
-			sub.set_item_metadata(sub.item_count - 1, {"survivor_id": s.id, "job": job_id})
+			sub.set_item_metadata(sub.item_count - 1, {"survivor_id": s.id, "activity_id": activity.id})
 
 		sub.id_pressed.connect(_on_submenu_selected.bind(sub))
 
@@ -621,7 +663,7 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		if s.tile_key != "" and s.tile_key != tile_key:
 			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
 			if current_tile != null:
-				location_hint = "  ← " + _activity_for_job_tile(s.job, current_tile.type) + " @ " + _format_tile_label(s.tile_key)
+				location_hint = "  ← " + _activity_label(s) + " @ " + _format_tile_label(s.tile_key)
 		elif s.building_id != "":
 			var b: Building = GameState._find_building_by_type(s.building_id)
 			if b != null:
@@ -656,9 +698,8 @@ func _on_submenu_selected(index: int, sub: PopupMenu) -> void:
 	if meta == null:
 		return
 	var survivor_id: int = meta["survivor_id"]
-	var job: int = meta["job"]
-	# On assigne le job ET la tuile
-	GameState.assign_job(survivor_id, job)
+	var act_id: String = meta["activity_id"]
+	GameState.assign_activity(survivor_id, act_id)
 	GameState.assign_to_tile(survivor_id, _popup_tile_key)
 	_popup_tile_key = ""
 
@@ -821,12 +862,11 @@ func _activity_label(s: Survivor) -> String:
 		var b: Building = GameState._find_building_by_type(s.building_id)
 		if b != null:
 			return _activity_for_building(b.config.id)
-	# Activité sur une tuile (job × type de tuile)
-	if s.tile_key != "":
-		var tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
-		if tile != null:
-			return _activity_for_job_tile(s.job, tile.type)
-	# Sans affectation
+	# Activité sur une tuile
+	if s.activity_id != "":
+		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
+		if activity != null:
+			return tr(activity.name_key)
 	return tr("ROLE_IDLE")
 
 func _activity_for_building(building_id: String) -> String:
@@ -837,20 +877,6 @@ func _activity_for_building(building_id: String) -> String:
 		"kitchen": return tr("ROLE_COOK")
 		"tool_workshop": return tr("ROLE_TOOLMAKER")
 		_: return tr("ROLE_BUILDING_WORKER")
-
-func _activity_for_job_tile(job: int, tile_type: int) -> String:
-	match job:
-		GameState.Job.FARMER:
-			match tile_type:
-				HexTile.Type.FOREST: return tr("ROLE_GATHERER")
-				HexTile.Type.PLAINS: return tr("ROLE_FARMER")
-				HexTile.Type.MOUNTAIN: return tr("ROLE_HERBALIST")
-				_: return tr("ROLE_FARMER")
-		GameState.Job.LUMBERJACK:
-			return tr("ROLE_LUMBERJACK")
-		GameState.Job.MINER:
-			return tr("ROLE_MINER")
-		_: return tr("ROLE_IDLE")
 
 func _resource_label(resource_name: String) -> String:
 	match resource_name:
@@ -1021,10 +1047,37 @@ func _rebuild_production() -> void:
 		if produced == 0.0 and consumed == 0.0:
 			continue
 		_production_section.add_child(_make_production_row(resource_name, produced, consumed))
+	# Lignes pour les activités à risque (chasse, etc.)
+	for row in _gather_risky_activities():
+		_production_section.add_child(_make_risky_row(row))
+
+func _make_risky_row(row: Dictionary) -> HBoxContainer:
+	var container := HBoxContainer.new()
+	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# Label : nom de l'activité + chance
+	var activity: Activity = row["activity"]
+	var label := Label.new()
+	label.text = "%s (%d%%)" % [tr(activity.name_key), int(activity.success_rate * 100)]
+	label.add_theme_font_size_override("font_size", 12)
+	label.custom_minimum_size = Vector2(140, 0)
+	container.add_child(label)
+	# Icônes du gain potentiel
+	var icons := HBoxContainer.new()
+	icons.add_theme_constant_override("separation", 2)
+	container.add_child(icons)
+	var amount: int = int(row["amount"])
+	for i in amount:
+		icons.add_child(_make_resource_icon(activity.produced_resource, PRODUCTION_ICON_SIZE))
+	return container
 
 func _compute_production(resource_name: String) -> float:
 	var total: float = 0.0
 	for s in GameState.awake_survivors():
+		# Exclure les activités à risque, qui auront leur ligne dédiée
+		if s.activity_id != "":
+			var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
+			if activity != null and activity.success_rate < 1.0:
+				continue
 		var out: Dictionary = GameState.get_survivor_output(s)
 		total += out.get(resource_name, 0.0)
 	if resource_name == "food":
@@ -1041,7 +1094,6 @@ func _compute_production(resource_name: String) -> float:
 			continue
 		if not b.can_operate():
 			continue
-		# Vérifier qu'on a tous les inputs en stock
 		var has_inputs := true
 		for input_name in b.config.inputs:
 			var needed: float = b.config.inputs[input_name] * b.level_multiplier()
@@ -1054,6 +1106,27 @@ func _compute_production(resource_name: String) -> float:
 		total += output
 	return total
 
+func _gather_risky_activities() -> Array:
+	# Retourne une liste de { activity, count, tile_amount }
+	# Groupé par activity_id et par tile_key pour avoir le bon yield.
+	var rows := []
+	for s in GameState.awake_survivors():
+		if s.activity_id == "" or s.tile_key == "":
+			continue
+		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
+		if activity == null or activity.success_rate >= 1.0:
+			continue
+		var tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
+		if tile == null:
+			continue
+		var amount: float = tile.yields.get(s.activity_id, 0.0)
+		rows.append({
+			"activity": activity,
+			"amount": amount,
+			"survivor": s,
+		})
+	return rows
+
 func _compute_consumption(resource_name: String) -> float:
 	var total: float = 0.0
 	if resource_name == "food":
@@ -1063,7 +1136,15 @@ func _compute_consumption(resource_name: String) -> float:
 		var synth: Building = GameState._find_building_by_type("synthesizer")
 		if synth != null and synth.active:
 			total += GameState.SYNTH_ELECTRICITY_COST
-	# Consommation par la construction du chantier actif
+	# Consommation par les activités sur tuiles
+	for s in GameState.awake_survivors():
+		if s.activity_id == "":
+			continue
+		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
+		if activity == null:
+			continue
+		total += activity.inputs.get(resource_name, 0.0)
+	# Consommation par la construction
 	total += _construction_consumption(resource_name)
 	# Consommation par les bâtiments opérationnels
 	for b in GameState.buildings:
@@ -1348,7 +1429,7 @@ func _open_building_popup(b: Building, popup_position: Vector2) -> void:
 		if s.tile_key != "":
 			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
 			if current_tile != null:
-				location_hint = "  ← " + _activity_for_job_tile(s.job, current_tile.type) + " @ " + _format_tile_label(s.tile_key)
+				location_hint = "  ← " + _activity_label(s) + " @ " + _format_tile_label(s.tile_key)
 		elif s.building_id != "" and s.building_id != b.config.id:
 			var other: Building = GameState._find_building_by_type(s.building_id)
 			if other != null:

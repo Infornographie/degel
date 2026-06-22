@@ -10,5 +10,6 @@ allowed_tile_types = Array[int]([2])
 inputs = Dictionary[String, float]({
 "tools": 1.0
 })
+produced_resource = "wood"
 tile_health_delta = 1
 metadata/_custom_type_script = "uid://pi3ffe2cp0cn"

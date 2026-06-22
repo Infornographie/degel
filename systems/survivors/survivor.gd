@@ -6,7 +6,7 @@ var id: int
 var name: String
 var profession: String
 var awake: bool = false
-var job: int = 0   # GameState.Job.IDLE par défaut
+var activity_id: String = ""   # vide = pas d'activité (IDLE)
 var tile_key: String = ""   # tuile où il travaille, "" si au bunker
 var building_id: String = ""   # bâtiment où il travaille, "" si pas en bâtiment
 var sprite_variant: int = 0

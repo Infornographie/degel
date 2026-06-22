@@ -13,7 +13,7 @@ const TILE_CONFIG_PATH := "res://resources/tile_config_default.tres"
 signal turn_advanced(turn: int)
 signal resources_changed(resources: Dictionary)
 signal survivor_woken(survivor: Survivor)
-signal survivor_assigned(survivor: Survivor, job: int)
+signal survivor_assigned(survivor: Survivor, activity_id: String)
 signal nightly_deaths(events: Array)   # liste de { name, profession, cause }
 signal famine_started
 signal famine_ended
@@ -87,11 +87,13 @@ func _ready() -> void:
 		Job.LUMBERJACK: {"wood": 0.0},
 		Job.MINER: {"ore": 0.0},
 	}
-	roster = Roster.new(config.roster_size)
-	hex_map = HexMap.new(2, tile_config)
-	production_system = ProductionSystem.new(hex_map, roster)
+
 	building_registry = BuildingRegistry.new()
 	activity_registry = ActivityRegistry.new()
+	roster = Roster.new(config.roster_size)
+	hex_map = HexMap.new(2, tile_config)
+	production_system = ProductionSystem.new(hex_map, roster, activity_registry)
+
 	_init_starter_buildings()
 	_refill_candidates()
 	_begin_turn()
@@ -137,14 +139,15 @@ func can_wake(id: int) -> bool:
 		return false
 	return true
 
-func assign_job(id: int, job: int) -> bool:
+## Affecte une activité à un colon. Renvoie true si succès.
+func assign_activity(survivor_id: int, new_activity_id: String) -> bool:
 	if is_over:
 		return false
-	var s: Survivor = roster.get_by_id(id)
+	var s: Survivor = roster.get_by_id(survivor_id)
 	if s == null or not s.awake:
 		return false
-	s.job = job
-	survivor_assigned.emit(s, job)
+	s.activity_id = new_activity_id
+	survivor_assigned.emit(s, new_activity_id)
 	return true
 
 func assign_to_tile(survivor_id: int, tile_key: String) -> bool:
@@ -563,22 +566,23 @@ func _resolve_buildings_operation() -> void:
 			continue
 		if not b.can_operate():
 			continue
-		print("Operating: ", b.config.id, " active=", b.active, " workers=", b.worker_ids.size())
 		var mult: float = b.level_multiplier()
-		var has_all_inputs := true
+		# Calcule le facteur d'opération : combien de fraction de cycle on peut faire
+		var operation_factor: float = 1.0
 		for resource_name in b.config.inputs:
 			var needed: float = b.config.inputs[resource_name] * mult
-			print("  needs ", needed, " of ", resource_name, " (has ", resources.get(resource_name, 0.0), ")")
-			if resources.get(resource_name, 0.0) < needed:
-				has_all_inputs = false
-				break
-		if not has_all_inputs:
-			print("  -> skipped (not enough inputs)")
+			if needed <= 0.0:
+				continue
+			var available: float = resources.get(resource_name, 0.0)
+			var ratio: float = available / needed
+			operation_factor = min(operation_factor, ratio)
+		if operation_factor <= 0.0:
 			continue
+		# Consommer les inputs au prorata
 		for resource_name in b.config.inputs:
-			var needed: float = b.config.inputs[resource_name] * mult
+			var needed: float = b.config.inputs[resource_name] * mult * operation_factor
 			resources[resource_name] = resources.get(resource_name, 0.0) - needed
+		# Produire les outputs au prorata
 		for resource_name in b.config.outputs:
-			var produced: float = b.config.outputs[resource_name] * mult
+			var produced: float = b.config.outputs[resource_name] * mult * operation_factor
 			resources[resource_name] = resources.get(resource_name, 0.0) + produced
-			print("  produced ", produced, " of ", resource_name)
