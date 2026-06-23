@@ -134,3 +134,10 @@ PROD_HEADER_CONSUMED,Consommé,Consumed
 PROD_HEADER_DELTA,Stock,Stock
 PROD_HEADER_IMPOSSIBLE,Impossible,Impossible
 PROD_RISKY_TITLE,Production aléatoire,Random production
+NEWS_TITLE,Nouvelles du bunker,News from the bunker
+NEWS_INTRO,La nuit dernière :,Last night:
+NEWS_SWITCHED_OFF,%s (%s) a été débranché(e).,%s (%s) was switched off.
+NEWS_STARVED,%s (%s) est mort(e) de faim.,%s (%s) starved to death.
+NEWS_HUNT_FAILED,%s (%s) est rentré(e) bredouille de la chasse.,%s (%s) came back empty-handed from the hunt.
+NEWS_TILE_MUTATED,Une forêt épuisée s'est transformée en plaine.,An exhausted forest has turned into plains.
+NEWS_BUILDING_DONE,Construction terminée : %s.,Construction complete: %s.

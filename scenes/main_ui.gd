@@ -850,13 +850,23 @@ func _show_popup(title: String, message: String) -> void:
 func _on_nightly_deaths(events: Array) -> void:
 	var lines: Array[String] = []
 	for entry in events:
-		if entry.cause == "switched off":
-			lines.append(tr("DEATH_LINE_SWITCHED") % [entry.name, tr(entry.profession)])
-		elif entry.cause == "starved":
-			lines.append(tr("DEATH_LINE_STARVED") % [entry.name, tr(entry.profession)])
-		else:
-			lines.append("%s (%s) — %s." % [entry.name, tr(entry.profession), entry.cause])
-	_show_popup(tr("POPUP_NEWS_TITLE"), tr("POPUP_NEWS_PREFIX") + "\n".join(lines))
+		match entry.get("type", ""):
+			"death":
+				if entry.cause == "switched off":
+					lines.append(tr("NEWS_SWITCHED_OFF") % [entry.name, tr(entry.profession)])
+				elif entry.cause == "starved":
+					lines.append(tr("NEWS_STARVED") % [entry.name, tr(entry.profession)])
+				else:
+					lines.append("%s (%s) — %s." % [entry.name, tr(entry.profession), entry.cause])
+			"activity_failed":
+				lines.append(tr("NEWS_HUNT_FAILED") % [entry.name, tr(entry.profession)])
+			"tile_mutated":
+				lines.append(tr("NEWS_TILE_MUTATED"))
+			"building_completed":
+				lines.append(tr("NEWS_BUILDING_DONE") % tr(entry.building_key))
+	if lines.is_empty():
+		return
+	_show_popup(tr("NEWS_TITLE"), tr("NEWS_INTRO") + "\n\n" + "\n".join(lines))
 
 func _activity_label(s: Survivor) -> String:
 	# Activité dans un bâtiment
@@ -1044,19 +1054,21 @@ func _rebuild_production() -> void:
 	for child in _production_section.get_children():
 		child.queue_free()
 	_production_section.add_child(_make_production_header())
+	var flow: Dictionary = GameState.turn_resolver.compute_flow()
 	for resource_name in PRODUCTION_ORDER:
-		var flow: Dictionary = _compute_resource_flow(resource_name)
-		var production: float = flow["production"]
-		var impossible: float = flow["impossible"]
-		var consumption: float = flow["consumption"]
+		if not flow.has(resource_name):
+			continue
+		var f: Dictionary = flow[resource_name]
+		var production: float = f["production"]
+		var consumption: float = f["consumption"]
+		var impossible: float = f["impossible"]
 		if production == 0.0 and consumption == 0.0 and impossible == 0.0:
 			continue
 		_production_section.add_child(_make_production_row(resource_name, production, consumption, impossible))
-	# Lignes pour les activités à risque (chasse, etc.)
-	var risky := _gather_risky_activities()
+	# Activités risquées
+	var risky: Array = GameState.turn_resolver.gather_risky()
 	if not risky.is_empty():
 		var sep := HSeparator.new()
-		sep.add_theme_constant_override("separation", 4)
 		_production_section.add_child(sep)
 		var title := Label.new()
 		title.text = tr("PROD_RISKY_TITLE")
@@ -1105,158 +1117,6 @@ func _make_risky_row(row: Dictionary) -> HBoxContainer:
 	for i in amount:
 		icons.add_child(_make_resource_icon(activity.produced_resource, PRODUCTION_ICON_SIZE))
 	return container
-
-## Retourne un Dictionary avec : production (qui peut opérer),
-## impossible (qui voudrait mais bloqué), consumption.
-func _compute_resource_flow(resource_name: String) -> Dictionary:
-	var production: float = 0.0
-	var impossible: float = 0.0
-	var consumption: float = 0.0
-	# --- PRODUCTION ---
-	# Colons sur tuiles (hors risky)
-	for s in GameState.awake_survivors():
-		if s.activity_id == "":
-			continue
-		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
-		if activity == null:
-			continue
-		if activity.success_rate < 1.0:
-			continue  # géré dans risky
-		if activity.produced_resource != resource_name:
-			continue
-		var raw: float = 0.0
-		if s.tile_key != "":
-			var tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
-			if tile != null:
-				raw = tile.yields.get(s.activity_id, 0.0)
-		if raw <= 0.0:
-			continue
-		# Vérifier les inputs disponibles
-		var has_inputs := true
-		for input_name in activity.inputs:
-			if GameState.resources.get(input_name, 0.0) < activity.inputs[input_name]:
-				has_inputs = false
-				break
-		if has_inputs:
-			production += raw
-		else:
-			impossible += raw
-	# Synth (production food)
-	if resource_name == "food":
-		var synth: Building = GameState._find_building_by_type("synthesizer")
-		if synth != null and synth.active:
-			production += GameState.SYNTH_FOOD_OUTPUT
-	# Réacteur (production electricity)
-	if resource_name == "electricity":
-		production += GameState.reactor_output
-	# Bâtiments opérationnels
-	# Bâtiments opérationnels
-	for b in GameState.buildings:
-		if b.state != Building.State.OPERATIONAL or not b.active:
-			continue
-		if b.config.id == "construction_zone" or b.config.id == "synthesizer":
-			continue
-		if not b.can_operate():
-			continue
-		var output: float = b.config.outputs.get(resource_name, 0.0) * b.level_multiplier()
-		if output <= 0.0:
-			continue
-		# Calcule l'operation_factor comme dans _resolve_buildings_operation
-		var operation_factor: float = 1.0
-		for input_name in b.config.inputs:
-			var needed: float = b.config.inputs[input_name] * b.level_multiplier()
-			if needed <= 0.0:
-				continue
-			var available: float = GameState.resources.get(input_name, 0.0)
-			operation_factor = min(operation_factor, available / needed)
-		# Part effectivement produite et part impossible
-		var effective_output: float = output * operation_factor
-		production += effective_output
-		impossible += output - effective_output
-	# --- CONSOMMATION ---
-	if resource_name == "food":
-		consumption += GameState.awake_count() * GameState.config.food_per_survivor
-	if resource_name == "electricity":
-		consumption += GameState.electricity_consumed_this_turn()
-		var synth: Building = GameState._find_building_by_type("synthesizer")
-		if synth != null and synth.active:
-			consumption += GameState.SYNTH_ELECTRICITY_COST
-	# Activités sur tuiles
-	for s in GameState.awake_survivors():
-		if s.activity_id == "":
-			continue
-		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
-		if activity == null:
-			continue
-		consumption += activity.inputs.get(resource_name, 0.0)
-	# Construction
-	consumption += _construction_consumption(resource_name)
-	# Bâtiments opérationnels
-	for b in GameState.buildings:
-		if b.state != Building.State.OPERATIONAL or not b.active:
-			continue
-		if b.config.id == "construction_zone":
-			continue
-		if not b.can_operate():
-			continue
-		consumption += b.config.inputs.get(resource_name, 0.0) * b.level_multiplier()
-	return {
-		"production": production,
-		"impossible": impossible,
-		"consumption": consumption,
-	}
-
-func _gather_risky_activities() -> Array:
-	# Retourne une liste de { activity, count, tile_amount }
-	# Groupé par activity_id et par tile_key pour avoir le bon yield.
-	var rows := []
-	for s in GameState.awake_survivors():
-		if s.activity_id == "" or s.tile_key == "":
-			continue
-		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
-		if activity == null or activity.success_rate >= 1.0:
-			continue
-		var tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
-		if tile == null:
-			continue
-		var amount: float = tile.yields.get(s.activity_id, 0.0)
-		rows.append({
-			"activity": activity,
-			"amount": amount,
-			"survivor": s,
-		})
-	return rows
-
-## Calcule combien de ressources le chantier actif va consommer ce tour.
-func _construction_consumption(resource_name: String) -> float:
-	var zone: Building = GameState._find_building_by_type("construction_zone")
-	if zone == null or zone.construction_target == "":
-		return 0.0
-	var target: Building = GameState._find_building_by_instance(int(zone.construction_target))
-	if target == null or target.state != Building.State.UNDER_CONSTRUCTION:
-		return 0.0
-	# Force de travail réelle des colons assignés
-	var work: float = 0.0
-	for wid in zone.worker_ids:
-		var s: Survivor = GameState.roster.get_by_id(wid)
-		if s != null and s.awake:
-			work += s.work_force
-	if work <= 0.0:
-		return 0.0
-	var order: Array[String] = target.config.build_order
-	if order.is_empty():
-		order = target.config.build_cost.keys()
-	for r in order:
-		if work <= 0.0:
-			break
-		var needed: float = target.config.build_cost.get(r, 0.0) - target.build_resources_consumed.get(r, 0.0)
-		if needed <= 0.0:
-			continue
-		var to_consume: float = min(work, needed)
-		if r == resource_name:
-			return to_consume
-		work -= to_consume
-	return 0.0
 
 const COLUMN_GAP: int = 20
 const NON_STORABLE_RESOURCES: Array[String] = ["electricity", "heat"]

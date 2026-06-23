@@ -3,6 +3,7 @@ extends Node
 
 var production_system: ProductionSystem
 var activity_registry: ActivityRegistry
+var turn_resolver: TurnResolver
 
 enum EndCause { REACTOR_DEAD, COLONY_LOST }
 enum Job { IDLE, FARMER, LUMBERJACK, MINER }
@@ -94,6 +95,7 @@ func _ready() -> void:
 	roster = Roster.new(config.roster_size)
 	hex_map = HexMap.new(2, tile_config)
 	production_system = ProductionSystem.new(hex_map, roster, activity_registry)
+	turn_resolver = TurnResolver.new(self)
 
 	_init_starter_buildings()
 	_refill_candidates()
@@ -247,12 +249,10 @@ func advance_turn() -> void:
 	turn += 1
 	_deaths_this_turn.clear()
 
-	# 2) Production des tuiles
-	_resolve_tile_production()
-	_resolve_construction()
-	_resolve_buildings_operation()
+	# 1) Résolution déterministe + aléatoire (production, construction, bâtiments, mutations)
+	var events: Array = turn_resolver.execute_turn()
 
-	# 3) Repas + famine
+	# 2) Repas + famine
 	var needed: float = awake_count() * config.food_per_survivor
 	var was_in_famine := famine_turns > 0
 	if resources["food"] >= needed:
@@ -270,10 +270,10 @@ func advance_turn() -> void:
 			famine_started.emit()
 		_resolve_famine_deaths()
 
-	# 4) Extinction des cryos si élec négative
+	# 3) Extinction des cryos si élec négative
 	_resolve_extinctions()
 
-	# 5) Érosion du réacteur
+	# 4) Érosion du réacteur
 	if turn % config.reactor_decay_interval == 0:
 		reactor_output -= 1.0
 		if reactor_output <= 0.0:
@@ -284,7 +284,7 @@ func advance_turn() -> void:
 			run_ended.emit(EndCause.REACTOR_DEAD)
 			return
 
-	# 6) Fin éventuelle par colonie vide
+	# 5) Fin éventuelle par colonie vide
 	if roster.is_empty():
 		is_over = true
 		resources_changed.emit(resources)
@@ -293,8 +293,12 @@ func advance_turn() -> void:
 		return
 
 	_begin_turn()
-	if not _deaths_this_turn.is_empty():
-		nightly_deaths.emit(_deaths_this_turn.duplicate())
+	# News : morts de la nuit + événements de production (chasses, mutations, constructions)
+	var news: Array = events.duplicate()
+	for d in _deaths_this_turn:
+		news.append({"type": "death", "name": d.name, "profession": d.profession, "cause": d.cause})
+	if not news.is_empty():
+		nightly_deaths.emit(news)
 	turn_advanced.emit(turn)
 	resources_changed.emit(resources)
 
@@ -344,8 +348,6 @@ func _sleeping_survivors() -> Array[Survivor]:
 	return result
 
 # ── PRODUCTION ──
-func _resolve_tile_production() -> void:
-	production_system.resolve(resources, production_multiplier)
 
 func get_survivor_output(s: Survivor) -> Dictionary:
 	return production_system.get_survivor_output(s, production_multiplier)
@@ -510,84 +512,3 @@ func _find_building_by_instance(instance_id: int) -> Building:
 		if b.instance_id == instance_id:
 			return b
 	return null
-
-func _resolve_construction() -> void:
-	var zone: Building = _find_building_by_type("construction_zone")
-	if zone == null or zone.construction_target == "":
-		return
-	var target := _find_building_by_instance(int(zone.construction_target))
-	if target == null or target.state != Building.State.UNDER_CONSTRUCTION:
-		return
-	# Force de travail totale = somme des forces de travail des colons assignés à la zone
-	var total_work: float = 0.0
-	for wid in zone.worker_ids:
-		var s: Survivor = roster.get_by_id(wid)
-		if s != null and s.awake:
-			total_work += s.work_force
-	if total_work <= 0.0:
-		return
-	# Consomme dans l'ordre les ressources requises, jusqu'à épuiser la force de travail
-	var work_left: float = total_work
-	var order: Array[String] = target.config.build_order
-	if order.is_empty():
-		order = target.config.build_cost.keys()
-	for resource_name in order:
-		if work_left <= 0.0:
-			break
-		var needed: float = target.config.build_cost.get(resource_name, 0.0) - target.build_resources_consumed.get(resource_name, 0.0)
-		if needed <= 0.0:
-			continue
-		var to_consume: float = min(work_left, needed)
-		# Vérifier qu'on a la ressource en stock
-		var available: float = resources.get(resource_name, 0.0)
-		if available < 1.0:
-			continue  # pas assez en stock, on saute (on pourrait s'arrêter aussi)
-		to_consume = min(to_consume, available)
-		resources[resource_name] = available - to_consume
-		target.build_resources_consumed[resource_name] = target.build_resources_consumed.get(resource_name, 0.0) + to_consume
-		work_left -= to_consume
-	construction_progressed.emit(target)
-	# Vérifier si la construction est terminée
-	var done := true
-	for resource_name in target.config.build_cost:
-		var consumed: float = target.build_resources_consumed.get(resource_name, 0.0)
-		if consumed < target.config.build_cost[resource_name]:
-			done = false
-			break
-	if done:
-		target.complete_construction()
-		# Libérer la zone de construction
-		if zone.construction_target == str(target.instance_id):
-			zone.construction_target = ""
-		construction_completed.emit(target)
-
-func _resolve_buildings_operation() -> void:
-	for b in buildings:
-		if b.state != Building.State.OPERATIONAL:
-			continue
-		if not b.active:
-			continue
-		if b.config.id == "construction_zone":
-			continue
-		if not b.can_operate():
-			continue
-		var mult: float = b.level_multiplier()
-		# Calcule le facteur d'opération : combien de fraction de cycle on peut faire
-		var operation_factor: float = 1.0
-		for resource_name in b.config.inputs:
-			var needed: float = b.config.inputs[resource_name] * mult
-			if needed <= 0.0:
-				continue
-			var available: float = resources.get(resource_name, 0.0)
-			var ratio: float = available / needed
-			operation_factor = min(operation_factor, ratio)
-		if operation_factor <= 0.0:
-			continue
-		# Consommer les inputs au prorata
-		for resource_name in b.config.inputs:
-			var needed: float = b.config.inputs[resource_name] * mult * operation_factor
-			resources[resource_name] = resources.get(resource_name, 0.0) - needed
-		# Produire les outputs au prorata
-		for resource_name in b.config.outputs:
-			var produced: float = b.config.outputs[resource_name] * mult * operation_factor
-			resources[resource_name] = resources.get(resource_name, 0.0) + produced
