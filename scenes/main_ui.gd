@@ -663,11 +663,11 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		if s.tile_key != "" and s.tile_key != tile_key:
 			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
 			if current_tile != null:
-				location_hint = "  ← " + _activity_label(s) + " @ " + _format_tile_label(s.tile_key)
+				location_hint = "  ← " + UiPresentation.activity(s) + " @ " + UiPresentation.tile_label(s.tile_key)
 		elif s.building_id != "":
 			var b: Building = GameState._find_building_by_type(s.building_id)
 			if b != null:
-				location_hint = "  ← " + _activity_for_building(b.config.id) + " @ " + tr(b.config.name_key)
+				location_hint = "  ← " + UiPresentation.activity_for_building(b.config.id) + " @ " + tr(b.config.name_key)
 		elif s.tile_key == tile_key:
 			location_hint = "  " + tr("LABEL_HERE")
 		else:
@@ -768,7 +768,7 @@ func _rebuild_lists() -> void:
 func _add_awake_row(s: Survivor) -> void:
 	var location: String
 	if s.tile_key != "":
-		location = tr("LABEL_AT_TILE") + _format_tile_label(s.tile_key)
+		location = tr("LABEL_AT_TILE") + UiPresentation.tile_label(s.tile_key)
 	elif s.building_id != "":
 		var b: Building = GameState._find_building_by_type(s.building_id)
 		if b != null:
@@ -777,7 +777,7 @@ func _add_awake_row(s: Survivor) -> void:
 			location = tr("LABEL_IN_SETTLEMENT")
 	else:
 		location = tr("LABEL_IDLE_IN_SETTLEMENT")
-	var role: String = _activity_label(s)
+	var role: String = UiPresentation.activity(s)
 	var prod := _format_output(s)
 	var tooltip := "%s (%s) — %s — %s" % [
 		s.name,
@@ -798,13 +798,6 @@ func _format_output(s: Survivor) -> String:
 	for resource_name in out:
 		parts.append("+%.0f %s" % [out[resource_name], resource_name])
 	return ", ".join(parts)
-
-func _format_tile_label(key: String) -> String:
-	var tile: HexTile = GameState.hex_map.get_tile_by_key(key)
-	if tile == null:
-		return key
-	var type_key: String = "TILE_TYPE_" + HexTile.Type.keys()[tile.type]
-	return "%s (%d,%d)" % [tr(type_key), tile.q, tile.r]
 
 func _on_advance_pressed() -> void:
 	GameState.advance_turn()
@@ -867,35 +860,6 @@ func _on_nightly_deaths(events: Array) -> void:
 	if lines.is_empty():
 		return
 	_show_popup(tr("NEWS_TITLE"), tr("NEWS_INTRO") + "\n\n" + "\n".join(lines))
-
-func _activity_label(s: Survivor) -> String:
-	# Activité dans un bâtiment
-	if s.building_id != "":
-		var b: Building = GameState._find_building_by_type(s.building_id)
-		if b != null:
-			return _activity_for_building(b.config.id)
-	# Activité sur une tuile
-	if s.activity_id != "":
-		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
-		if activity != null:
-			return tr(activity.name_key)
-	return tr("ROLE_IDLE")
-
-func _activity_for_building(building_id: String) -> String:
-	match building_id:
-		"construction_zone": return tr("ROLE_BUILDER")
-		"synthesizer": return tr("ROLE_SYNTH_OPERATOR")
-		"campfire": return tr("ROLE_FIRE_KEEPER")
-		"kitchen": return tr("ROLE_COOK")
-		"tool_workshop": return tr("ROLE_TOOLMAKER")
-		_: return tr("ROLE_BUILDING_WORKER")
-
-func _resource_label(resource_name: String) -> String:
-	match resource_name:
-		"food": return tr("RESOURCE_FOOD")
-		"wood": return tr("RESOURCE_WOOD")
-		"ore": return tr("RESOURCE_ORE")
-		_: return resource_name
 
 func _make_candidate_card(s: Survivor) -> Control:
 	var tooltip := "%s\n%s\n\n%s" % [
@@ -1005,7 +969,7 @@ func _rebuild_resources_bar() -> void:
 func _make_resource_pill(resource_name: String) -> HBoxContainer:
 	var pill := HBoxContainer.new()
 	pill.add_theme_constant_override("separation", 6)
-	pill.tooltip_text = _resource_label(resource_name)
+	pill.tooltip_text = UiPresentation.resource(resource_name)
 	# Icône (sprite si dispo, sinon placeholder coloré)
 	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
 	if ResourceLoader.exists(sprite_path):
@@ -1017,7 +981,7 @@ func _make_resource_pill(resource_name: String) -> HBoxContainer:
 		pill.add_child(icon)
 	else:
 		var placeholder := ColorRect.new()
-		placeholder.color = _placeholder_color(resource_name)
+		placeholder.color = UiPresentation.placeholder_color(resource_name)
 		placeholder.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
 		pill.add_child(placeholder)
 	# Valeur
@@ -1028,15 +992,6 @@ func _make_resource_pill(resource_name: String) -> HBoxContainer:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	pill.add_child(label)
 	return pill
-
-func _placeholder_color(resource_name: String) -> Color:
-	match resource_name:
-		"food": return Color("#c4a13a")
-		"wood": return Color("#7b4f2c")
-		"ore": return Color("#5a5a6b")
-		"electricity": return Color("#e8c441")
-		"heat": return Color("#c25a3a")
-		_: return Color.GRAY
 
 var _production_section: VBoxContainer
 
@@ -1194,7 +1149,7 @@ func _make_resource_icon(resource_name: String, icon_size: int) -> Control:
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		return icon
 	var placeholder := ColorRect.new()
-	placeholder.color = _placeholder_color(resource_name)
+	placeholder.color = UiPresentation.placeholder_color(resource_name)
 	placeholder.custom_minimum_size = Vector2(icon_size, icon_size)
 	return placeholder
 
@@ -1332,7 +1287,7 @@ func _on_construction_target_pressed(b: Building) -> void:
 				continue
 		var cost_parts: Array[String] = []
 		for resource_name in config.build_cost:
-			cost_parts.append("%d %s" % [int(config.build_cost[resource_name]), _resource_label(resource_name)])
+			cost_parts.append("%d %s" % [int(config.build_cost[resource_name]), UiPresentation.resource(resource_name)])
 		var cost_str: String = " (" + ", ".join(cost_parts) + ")" if not cost_parts.is_empty() else ""
 		_tile_popup.add_item(tr(config.name_key) + cost_str)
 		_tile_popup.set_item_metadata(_tile_popup.item_count - 1, {
@@ -1388,11 +1343,11 @@ func _open_building_popup(b: Building, popup_position: Vector2) -> void:
 		if s.tile_key != "":
 			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
 			if current_tile != null:
-				location_hint = "  ← " + _activity_label(s) + " @ " + _format_tile_label(s.tile_key)
+				location_hint = "  ← " + UiPresentation.activity(s) + " @ " + UiPresentation.tile_label(s.tile_key)
 		elif s.building_id != "" and s.building_id != b.config.id:
 			var other: Building = GameState._find_building_by_type(s.building_id)
 			if other != null:
-				location_hint = "  ← " + _activity_for_building(other.config.id) + " @ " + tr(other.config.name_key)
+				location_hint = "  ← " + UiPresentation.activity_for_building(other.config.id) + " @ " + tr(other.config.name_key)
 		elif s.building_id == b.config.id:
 			location_hint = "  " + tr("LABEL_HERE")
 		else:
