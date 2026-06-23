@@ -703,20 +703,6 @@ func _on_submenu_selected(index: int, sub: PopupMenu) -> void:
 	GameState.assign_to_tile(survivor_id, _popup_tile_key)
 	_popup_tile_key = ""
 
-func _on_tile_popup_selected(id: int) -> void:
-	if _popup_tile_key == "":
-		return
-	if id == -1:
-		# Clear : on retire l'occupant courant
-		var tile: HexTile = GameState.hex_map.get_tile_by_key(_popup_tile_key)
-		if tile != null and tile.worker_id != -1:
-			GameState.unassign_from_tile(tile.worker_id)
-	elif id == -2:
-		pass   # no-op
-	else:
-		GameState.assign_to_tile(id, _popup_tile_key)
-	_popup_tile_key = ""
-
 # --- Refresh ---
 
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
@@ -741,13 +727,6 @@ func _rebuild_resources() -> void:
 		elec_parts.append(tr("LABEL_SYNTH_COST") % GameState.SYNTH_ELECTRICITY_COST)
 	elec_parts.append(tr("LABEL_USABLE") % elec_value)
 	_add_label(_infos_section, tr("LABEL_ELEC_HEADER") + " | ".join(elec_parts))
-
-func _aggregate_production(resource_name: String) -> float:
-	var total: float = 0.0
-	for s in GameState.awake_survivors():
-		var out: Dictionary = GameState.get_survivor_output(s)
-		total += out.get(resource_name, 0.0)
-	return total
 
 # --- Listes survivants ---
 

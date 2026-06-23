@@ -6,7 +6,6 @@ var activity_registry: ActivityRegistry
 var turn_resolver: TurnResolver
 
 enum EndCause { REACTOR_DEAD, COLONY_LOST }
-enum Job { IDLE, FARMER, LUMBERJACK, MINER }
 
 const CONFIG_PATH := "res://resources/game_config_default.tres"
 const TILE_CONFIG_PATH := "res://resources/tile_config_default.tres"
@@ -29,7 +28,6 @@ signal construction_completed(building: Building)
 
 var config: GameConfig
 var tile_config: TileConfig
-var job_outputs: Dictionary = {}
 
 var turn: int = 0
 var is_over: bool = false
@@ -82,12 +80,6 @@ func _ready() -> void:
 		"tools": 0.0,
 		"electricity": 0.0,
 		"heat": 0.0,
-	}
-	job_outputs = {
-		Job.IDLE: {},
-		Job.FARMER: {"food": 0.0},  # rempli par les tuiles
-		Job.LUMBERJACK: {"wood": 0.0},
-		Job.MINER: {"ore": 0.0},
 	}
 
 	building_registry = BuildingRegistry.new()
