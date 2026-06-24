@@ -4,8 +4,6 @@ extends Control
 
 const BUNKER_BUILDING_IDS: Array[String] = ["computer", "cryo_room", "synthesizer"]
 
-var _awake_header: Label
-var _awake_list: HBoxContainer
 var _advance_button: Button
 var _status_label: Label
 var _map_container: Control
@@ -103,7 +101,8 @@ func _build_ui() -> void:
 	var awake_panel := VBoxContainer.new()
 	awake_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	awake_scroll.add_child(awake_panel)
-	_build_survivors_section(awake_panel)
+	var survivors_view: SurvivorsView = preload("res://scenes/ui/survivors_view.tscn").instantiate()
+	awake_panel.add_child(survivors_view)
 
 	var buttons_panel := VBoxContainer.new()
 	buttons_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -117,12 +116,6 @@ func _build_ui() -> void:
 	resources_row.custom_minimum_size = Vector2(0, 50)
 	main_vbox.add_child(resources_row)
 	_build_resources_bar(resources_row)
-
-func _build_survivors_section(parent: VBoxContainer) -> void:
-	_awake_header = _add_label(parent, tr("LABEL_AWAKE") % 0)
-	_awake_list = HBoxContainer.new()
-	_awake_list.add_theme_constant_override("separation", 8)
-	parent.add_child(_awake_list)
 
 func _build_buttons_section(parent: VBoxContainer) -> void:
 	_advance_button = Button.new()
@@ -679,60 +672,9 @@ func _on_submenu_selected(index: int, sub: PopupMenu) -> void:
 # --- Refresh ---
 
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
-	_rebuild_lists()
 	_draw_map()
 	_draw_colony()
 	_rebuild_resources_bar()
-
-# --- Listes survivants ---
-
-func _rebuild_lists() -> void:
-	for child in _awake_list.get_children():
-		child.queue_free()
-	var awake_sorted: Array[Survivor] = []
-	for s in GameState.survivors():
-		if s.awake:
-			awake_sorted.append(s)
-	awake_sorted.sort_custom(func(a, b): return a.wake_order < b.wake_order)
-	for s in awake_sorted:
-		_add_awake_row(s)
-	_awake_header.text = tr("LABEL_AWAKE") % awake_sorted.size()
-	if awake_sorted.is_empty():
-		_add_label(_awake_list, tr("LABEL_NOBODY_AWAKE"))
-
-func _add_awake_row(s: Survivor) -> void:
-	var location: String
-	if s.tile_key != "":
-		location = tr("LABEL_AT_TILE") + UiPresentation.tile_label(s.tile_key)
-	elif s.building_id != "":
-		var b: Building = GameState._find_building_by_type(s.building_id)
-		if b != null:
-			location = tr("LABEL_AT_TILE") + tr(b.config.name_key) + " " + tr("LABEL_IN_SETTLEMENT_BRACKETS")
-		else:
-			location = tr("LABEL_IN_SETTLEMENT")
-	else:
-		location = tr("LABEL_IDLE_IN_SETTLEMENT")
-	var role: String = UiPresentation.activity(s)
-	var prod := _format_output(s)
-	var tooltip := "%s (%s) — %s — %s" % [
-		s.name,
-		tr(s.profession),
-		role,
-		location,
-	]
-	if prod != "":
-		tooltip += "\n\n→ " + prod
-	var sprite := UiPresentation.survivor_sprite(s, tooltip)
-	_awake_list.add_child(sprite)
-
-func _format_output(s: Survivor) -> String:
-	var out: Dictionary = GameState.get_survivor_output(s)
-	if out.is_empty():
-		return ""
-	var parts: Array[String] = []
-	for resource_name in out:
-		parts.append("+%.0f %s" % [out[resource_name], resource_name])
-	return ", ".join(parts)
 
 func _on_advance_pressed() -> void:
 	GameState.advance_turn()
