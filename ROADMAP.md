@@ -82,9 +82,10 @@ Refonte structurelle : les jobs génériques (FARMER/LUMBERJACK/MINER) deviennen
 Refacto de la dette accumulée. Trois sous-phases identifiées, deux faites.
 
 - **2 — Extraction des helpers UI.** Création de `res://scenes/ui/ui_presentation.gd` (`class_name UiPresentation`, static func). Cinq helpers déplacés depuis `main_ui.gd` : `resource`, `placeholder_color`, `tile_label`, `activity`, `activity_for_building`. 11 call sites mis à jour. Nom dévié de `ui_labels.gd` vers `ui_presentation.gd` parce que le fichier contient aussi `placeholder_color` qui n'est pas un label.
+- **3a — Extraction de ProductionView (première vue séparée).** Pattern posé : une vue = une `.tscn` minimale (B1, coquille seule) + un script `class_name XxxView extends Control`, qui s'abonne directement aux signals de GameState. Instanciée par MainUi via `preload(...).instantiate()`. UiPresentation augmenté avec `resource_icon()` et `production_icon()` + constantes sprite, désormais consommé par MainUi (pills) et ProductionView (lignes de prod). `main_ui.gd` réduit de ~210 lignes (1367 → ~1157).
 - **4 — Suppression du legacy Job.** `enum Job`, `var job_outputs` et son init dans `game_state.gd`. Fonctions mortes `_on_tile_popup_selected` et `_aggregate_production` dans `main_ui.gd`. Commentaire obsolète sur `GameState.Job.X` dans `hex_tile.gd`. Confirmé par grep global : zéro référence restante.
 
-Sous-phase 3 (découpage `main_ui.gd` en vues séparées) reportée — plusieurs séances, à attaquer en bloc cohérent.
+Sous-phase 3 (les autres vues : ColonyView, MapView, SurvivorsView, CryoView, InfosSection) reste à faire — pattern validé, reproduction vue par vue.
 
 ### Build & livraison
  
@@ -176,6 +177,8 @@ Signaux candidats : cohabitation, travail partagé, événements vécus ensemble
 - **Bilan food bizarre ?** Probablement résolu par le TurnResolver, à confirmer en jeu.
 - **Famine bug** : confirmé comme legacy, non régression. Hypothèse : multiplier 0.8 crée des spirales bloquées. À diagnostiquer.
 - **Ordre des bâtiments dans `_resolve_buildings_operation`** : premier servi sur les inputs partagés. Acceptable maintenant, à raffiner si gênant en jeu.
+- **Doublon de colonne "impossible"** dans `ProductionView._make_row`. Le code ajoute la colonne 4 deux fois (une avec `total_impossible`, une avec `imp_int`). Hérité de l'ancien `_make_production_row`, préservé fidèlement avec un FIXME dans le code. Visuel à diagnostiquer : soit la 5ème colonne est invisible parce que masquée par le layout, soit il y a un vrai bug d'affichage. Test rapide : provoquer un cas "impossible" non nul et regarder ce que le panneau affiche.
+- **`OVERLAY_PATH` et `RESOURCE_SPRITE_PATH` partagent la même valeur** dans `UiPresentation`. Sémantiquement différents, factuellement identiques. À découpler quand les vrais assets d'overlay seront créés.
 ---
  
 ## 🎯 Indicateurs de santé du projet

@@ -76,12 +76,11 @@ func _build_ui() -> void:
 	right_column.add_child(map_panel)
 	_build_map_panel(map_panel)
 
-	var production_panel := VBoxContainer.new()
-	production_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	production_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	production_panel.size_flags_stretch_ratio = 0.45
-	right_column.add_child(production_panel)
-	_build_production_panel(production_panel)
+	var production_view: ProductionView = preload("res://scenes/ui/production_view.tscn").instantiate()
+	production_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	production_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	production_view.size_flags_stretch_ratio = 0.45
+	right_column.add_child(production_view)
 
 	# Rang du milieu : infos + awakened + buttons
 	var middle_row := HBoxContainer.new()
@@ -268,7 +267,7 @@ func _add_generic_building_slot(b: Building) -> void:
 				separation = int(-overlap)
 			row.add_theme_constant_override("separation", separation)
 			for i in remaining:
-				row.add_child(_make_resource_icon(resource_name, 16))
+				row.add_child(UiPresentation.resource_icon(resource_name, 16))
 			vbox.add_child(row)
 		# Indique si c'est la cible active
 		var zone: Building = GameState._find_building("construction_zone")
@@ -318,7 +317,7 @@ func _add_generic_building_slot(b: Building) -> void:
 			for resource_name in b.config.inputs:
 				var amt: int = int(b.config.inputs[resource_name])
 				for i in amt:
-					var icon := _make_resource_icon(resource_name, 14)
+					var icon := UiPresentation.resource_icon(resource_name, 14)
 					io_row.add_child(icon)
 			# Flèche séparatrice si on a les deux
 			if not b.config.inputs.is_empty() and not b.config.outputs.is_empty():
@@ -330,7 +329,7 @@ func _add_generic_building_slot(b: Building) -> void:
 			for resource_name in b.config.outputs:
 				var amt: int = int(b.config.outputs[resource_name])
 				for i in amt:
-					var icon := _make_resource_icon(resource_name, 14)
+					var icon := UiPresentation.resource_icon(resource_name, 14)
 					io_row.add_child(icon)
 
 func _find_starter(id: String) -> Building:
@@ -561,7 +560,7 @@ func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
 		icons_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icons_row.add_theme_constant_override("separation", separation)
 		for i in risky_amount:
-			icons_row.add_child(_make_resource_icon(risky_resource, TILE_PROD_ICON_SIZE))
+			icons_row.add_child(UiPresentation.resource_icon(risky_resource, TILE_PROD_ICON_SIZE))
 		var pct := Label.new()
 		pct.text = " %d%%" % int(risky_rate * 100)
 		pct.add_theme_font_size_override("font_size", 9)
@@ -590,7 +589,7 @@ func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
 		for resource_name in out:
 			var amount: int = int(out[resource_name])
 			for i in amount:
-				var icon := _make_resource_icon(resource_name, TILE_PROD_ICON_SIZE)
+				var icon := UiPresentation.resource_icon(resource_name, TILE_PROD_ICON_SIZE)
 				icons_row.add_child(icon)
 		# Positionne le row centré sur la tuile, légèrement décalé vers le bas
 		icons_row.size = Vector2(HEX_RADIUS * 2.0, TILE_PROD_ICON_SIZE)
@@ -712,7 +711,6 @@ func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
 	_draw_map()
 	_draw_colony()
 	_rebuild_resources_bar()
-	_rebuild_production()
 
 func _rebuild_resources() -> void:
 	for child in _infos_section.get_children():
@@ -923,9 +921,6 @@ func _make_survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
 
 var _resources_bar: HBoxContainer
 const RESOURCE_ORDER: Array[String] = ["food", "wood", "ore", "tools"]
-const PRODUCTION_ORDER: Array[String] = ["food", "wood", "ore", "tools", "electricity", "heat"]
-const RESOURCE_SPRITE_PATH := "res://assets/resources/%s.png"
-const RESOURCE_SPRITE_SIZE: int = 32
 
 func _build_resources_bar(parent: HBoxContainer) -> void:
 	var scroll := ScrollContainer.new()
@@ -949,20 +944,7 @@ func _make_resource_pill(resource_name: String) -> HBoxContainer:
 	var pill := HBoxContainer.new()
 	pill.add_theme_constant_override("separation", 6)
 	pill.tooltip_text = UiPresentation.resource(resource_name)
-	# Icône (sprite si dispo, sinon placeholder coloré)
-	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
-	if ResourceLoader.exists(sprite_path):
-		var icon := TextureRect.new()
-		icon.texture = load(sprite_path)
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
-		pill.add_child(icon)
-	else:
-		var placeholder := ColorRect.new()
-		placeholder.color = UiPresentation.placeholder_color(resource_name)
-		placeholder.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
-		pill.add_child(placeholder)
+	pill.add_child(UiPresentation.resource_icon(resource_name, UiPresentation.RESOURCE_SPRITE_SIZE))
 	# Valeur
 	var value: float = GameState.resources.get(resource_name, 0.0)
 	var label := Label.new()
@@ -971,197 +953,6 @@ func _make_resource_pill(resource_name: String) -> HBoxContainer:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	pill.add_child(label)
 	return pill
-
-var _production_section: VBoxContainer
-
-func _build_production_panel(parent: VBoxContainer) -> void:
-	var title := _add_label(parent, tr("LABEL_PRODUCTION_TITLE"))
-	title.add_theme_font_size_override("font_size", 16)
-	_production_section = VBoxContainer.new()
-	_production_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_production_section.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(_production_section)
-
-func _rebuild_production() -> void:
-	if _production_section == null:
-		return
-	for child in _production_section.get_children():
-		child.queue_free()
-	_production_section.add_child(_make_production_header())
-	var flow: Dictionary = GameState.turn_resolver.compute_flow()
-	for resource_name in PRODUCTION_ORDER:
-		if not flow.has(resource_name):
-			continue
-		var f: Dictionary = flow[resource_name]
-		var production: float = f["production"]
-		var consumption: float = f["consumption"]
-		var impossible: float = f["impossible"]
-		if production == 0.0 and consumption == 0.0 and impossible == 0.0:
-			continue
-		_production_section.add_child(_make_production_row(resource_name, production, consumption, impossible))
-	# Activités risquées
-	var risky: Array = GameState.turn_resolver.gather_risky()
-	if not risky.is_empty():
-		var sep := HSeparator.new()
-		_production_section.add_child(sep)
-		var title := Label.new()
-		title.text = tr("PROD_RISKY_TITLE")
-		title.add_theme_font_size_override("font_size", 10)
-		title.modulate = Color(1, 1, 1, 0.7)
-		_production_section.add_child(title)
-		for row_data in risky:
-			_production_section.add_child(_make_risky_row(row_data))
-
-func _make_production_header() -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", COLUMN_GAP)
-	row.modulate = Color(1, 1, 1, 0.6)
-	var spacer := Label.new()
-	spacer.text = ""
-	spacer.custom_minimum_size = Vector2(40, 0)
-	row.add_child(spacer)
-	row.add_child(_make_header_label(tr("PROD_HEADER_CONSUMED")))
-	row.add_child(_make_header_label(tr("PROD_HEADER_DELTA")))
-	row.add_child(_make_header_label(tr("PROD_HEADER_IMPOSSIBLE")))
-	return row
-
-func _make_header_label(text: String) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.add_theme_font_size_override("font_size", 9)
-	label.custom_minimum_size = Vector2(80, 0)
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	return label
-
-func _make_risky_row(row: Dictionary) -> HBoxContainer:
-	var container := HBoxContainer.new()
-	container.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	# Label : nom de l'activité + chance
-	var activity: Activity = row["activity"]
-	var label := Label.new()
-	label.text = "%s (%d%%)" % [tr(activity.name_key), int(activity.success_rate * 100)]
-	label.add_theme_font_size_override("font_size", 12)
-	label.custom_minimum_size = Vector2(140, 0)
-	container.add_child(label)
-	# Icônes du gain potentiel
-	var icons := HBoxContainer.new()
-	icons.add_theme_constant_override("separation", 2)
-	container.add_child(icons)
-	var amount: int = int(row["amount"])
-	for i in amount:
-		icons.add_child(_make_resource_icon(activity.produced_resource, PRODUCTION_ICON_SIZE))
-	return container
-
-const COLUMN_GAP: int = 20
-const NON_STORABLE_RESOURCES: Array[String] = ["electricity", "heat"]
-
-func _make_production_row(resource_name: String, production: float, consumption: float, impossible: float) -> HBoxContainer:
-	var row := HBoxContainer.new()
-	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("separation", COLUMN_GAP)
-	# Calcul des 3 catégories visibles
-	var prod_int: int = int(production)
-	var cons_int: int = int(consumption)
-	var imp_int: int = int(impossible)
-	var covered: int = min(prod_int, cons_int)  # part conso couverte
-	var surplus: int = max(0, prod_int - cons_int)
-	var deficit: int = max(0, cons_int - prod_int)
-	# Colonne 1 : net chiffré
-	var net: float = production - consumption
-	var net_label := Label.new()
-	net_label.text = "%+d" % int(net)
-	net_label.add_theme_font_size_override("font_size", 14)
-	net_label.custom_minimum_size = Vector2(40, 0)
-	net_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	row.add_child(net_label)
-	# Colonne 2 : consommé couvert
-	row.add_child(_make_icon_column(resource_name, covered, ""))
-	# Colonne 3 : surplus OU déficit
-	# Colonne 3 : surplus OU déficit (stock)
-	if surplus > 0:
-		row.add_child(_make_icon_column(resource_name, surplus, "surplus"))
-	elif deficit > 0 and not (resource_name in NON_STORABLE_RESOURCES):
-		row.add_child(_make_icon_column(resource_name, deficit, "deficit"))
-	else:
-		row.add_child(_make_empty_column())
-	# Colonne 4 : impossible (faute d'inputs) + déficit non-stockable
-	var total_impossible: int = imp_int
-	if deficit > 0 and resource_name in NON_STORABLE_RESOURCES:
-		total_impossible += deficit
-	if total_impossible > 0:
-		row.add_child(_make_icon_column(resource_name, total_impossible, "crossed"))
-	else:
-		row.add_child(_make_empty_column())
-	# Colonne 4 : impossible
-	if imp_int > 0:
-		row.add_child(_make_icon_column(resource_name, imp_int, "crossed"))
-	else:
-		row.add_child(_make_empty_column())
-	return row
-
-func _make_empty_column() -> Control:
-	var ctl := Control.new()
-	ctl.custom_minimum_size = Vector2(80, PRODUCTION_ICON_SIZE)
-	return ctl
-
-func _make_icon_column(resource_name: String, count: int, overlay: String) -> HBoxContainer:
-	var col := HBoxContainer.new()
-	col.custom_minimum_size = Vector2(80, PRODUCTION_ICON_SIZE)
-	# Resserrement si trop d'icônes
-	var separation: int = 2
-	if count > 4:
-		var target_width: float = 4.0 * (PRODUCTION_ICON_SIZE + 2)
-		var needed_width: float = count * PRODUCTION_ICON_SIZE
-		separation = int(-((needed_width - target_width) / max(1, count - 1)))
-	col.add_theme_constant_override("separation", separation)
-	for i in count:
-		col.add_child(_make_production_icon(resource_name, overlay))
-	return col
-
-func _make_resource_icon(resource_name: String, icon_size: int) -> Control:
-	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
-	if ResourceLoader.exists(sprite_path):
-		var icon := TextureRect.new()
-		icon.texture = load(sprite_path)
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		icon.custom_minimum_size = Vector2(icon_size, icon_size)
-		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		return icon
-	var placeholder := ColorRect.new()
-	placeholder.color = UiPresentation.placeholder_color(resource_name)
-	placeholder.custom_minimum_size = Vector2(icon_size, icon_size)
-	return placeholder
-
-const OVERLAY_PATH := "res://assets/resources/%s.png"
-const PRODUCTION_ICON_SIZE: int = 32
-
-func _make_production_icon(resource_name: String, overlay: String) -> Control:
-	# On empile l'icône de la ressource et un overlay éventuel
-	var stack := Control.new()
-	stack.custom_minimum_size = Vector2(PRODUCTION_ICON_SIZE, PRODUCTION_ICON_SIZE)
-	var base := _make_resource_icon(resource_name, PRODUCTION_ICON_SIZE)
-	base.position = Vector2.ZERO
-	stack.add_child(base)
-	if overlay != "":
-		var overlay_path := OVERLAY_PATH % overlay
-		if ResourceLoader.exists(overlay_path):
-			var ov := TextureRect.new()
-			ov.texture = load(overlay_path)
-			ov.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			ov.custom_minimum_size = Vector2(PRODUCTION_ICON_SIZE, PRODUCTION_ICON_SIZE)
-			ov.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			ov.position = Vector2.ZERO
-			stack.add_child(ov)
-		else:
-			var ph := ColorRect.new()
-			ph.custom_minimum_size = Vector2(PRODUCTION_ICON_SIZE, PRODUCTION_ICON_SIZE)
-			match overlay:
-				"surplus": ph.color = Color(0.4, 1.0, 0.4, 0.5)   # vert
-				"deficit": ph.color = Color(1.0, 0.7, 0.2, 0.5)   # orange (puisé sur réserve)
-				_: ph.color = Color(1.0, 0.3, 0.3, 0.6)            # rouge (manquant)
-			ph.position = Vector2.ZERO
-			stack.add_child(ph)
-	return stack
 
 func _add_construction_zone_slot(b: Building) -> void:
 	var panel := _new_slot_panel(false)
@@ -1220,7 +1011,7 @@ func _add_construction_zone_slot(b: Building) -> void:
 						continue
 					var to_consume: int = int(min(work_left, needed))
 					for i in to_consume:
-						icons_row.add_child(_make_production_icon(resource_name, "crossed"))
+						icons_row.add_child(UiPresentation.production_icon(resource_name, "crossed"))
 					work_left -= to_consume
 	else:
 		var no_target := Label.new()

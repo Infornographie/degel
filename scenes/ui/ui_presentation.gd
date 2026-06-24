@@ -1,11 +1,15 @@
 extends Object
 class_name UiPresentation
-## Helpers de présentation : transforment une donnée du modèle en string ou
-## couleur d'affichage. Toutes les fonctions sont statiques — aucune logique
-## d'état. Centralise ce qui sera partagé entre les futures vues séparées.
+## Helpers de présentation : transforment une donnée du modèle en string,
+## couleur, ou widget visuel d'affichage. Toutes les fonctions sont statiques —
+## aucune logique d'état. Centralise ce qui est partagé entre les vues.
 ##
 ## Note : on utilise TranslationServer.translate() au lieu de tr() parce que
 ## tr() est une méthode de Object, inaccessible depuis static func.
+
+const RESOURCE_SPRITE_PATH := "res://assets/resources/%s.png"
+const RESOURCE_SPRITE_SIZE: int = 32
+const OVERLAY_PATH := "res://assets/resources/%s.png"
 
 ## Nom affichable d'une ressource (clé i18n si connue, sinon brut).
 static func resource(resource_name: String) -> String:
@@ -54,3 +58,49 @@ static func activity(s: Survivor) -> String:
 		if act != null:
 			return TranslationServer.translate(act.name_key)
 	return TranslationServer.translate("ROLE_IDLE")
+
+## Icône d'une ressource (sprite si dispo, sinon ColorRect placeholder).
+## Taille paramétrable pour permettre les usages variés (barres, lignes de prod, etc).
+static func resource_icon(resource_name: String, icon_size: int) -> Control:
+	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
+	if ResourceLoader.exists(sprite_path):
+		var icon := TextureRect.new()
+		icon.texture = load(sprite_path)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.custom_minimum_size = Vector2(icon_size, icon_size)
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		return icon
+	var placeholder := ColorRect.new()
+	placeholder.color = placeholder_color(resource_name)
+	placeholder.custom_minimum_size = Vector2(icon_size, icon_size)
+	return placeholder
+
+## Icône composée pour la vue de production : sprite de la ressource + overlay
+## éventuel ("surplus", "deficit", "crossed"...). L'overlay essaie d'abord un
+## asset image, puis tombe sur un ColorRect teinté en fallback.
+static func production_icon(resource_name: String, overlay: String) -> Control:
+	var stack := Control.new()
+	stack.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
+	var base := resource_icon(resource_name, RESOURCE_SPRITE_SIZE)
+	base.position = Vector2.ZERO
+	stack.add_child(base)
+	if overlay != "":
+		var overlay_path := OVERLAY_PATH % overlay
+		if ResourceLoader.exists(overlay_path):
+			var ov := TextureRect.new()
+			ov.texture = load(overlay_path)
+			ov.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			ov.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
+			ov.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ov.position = Vector2.ZERO
+			stack.add_child(ov)
+		else:
+			var ph := ColorRect.new()
+			ph.custom_minimum_size = Vector2(RESOURCE_SPRITE_SIZE, RESOURCE_SPRITE_SIZE)
+			match overlay:
+				"surplus": ph.color = Color(0.4, 1.0, 0.4, 0.5)   # vert
+				"deficit": ph.color = Color(1.0, 0.7, 0.2, 0.5)   # orange (puisé sur réserve)
+				_: ph.color = Color(1.0, 0.3, 0.3, 0.6)            # rouge (manquant)
+			ph.position = Vector2.ZERO
+			stack.add_child(ph)
+	return stack
