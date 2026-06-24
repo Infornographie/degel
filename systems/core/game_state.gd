@@ -23,7 +23,9 @@ signal tile_assignment_changed(tile: HexTile)
 signal run_ended(cause: EndCause)
 signal building_assignment_changed(building: Building)
 signal construction_started(building: Building)
+@warning_ignore("unused_signal")
 signal construction_progressed(building: Building)
+@warning_ignore("unused_signal")
 signal construction_completed(building: Building)
 
 var config: GameConfig

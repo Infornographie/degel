@@ -10,6 +10,8 @@ class_name UiPresentation
 const RESOURCE_SPRITE_PATH := "res://assets/resources/%s.png"
 const RESOURCE_SPRITE_SIZE: int = 32
 const OVERLAY_PATH := "res://assets/resources/%s.png"
+const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic%d.png"
+const SURVIVOR_SPRITE_SCALE: int = 4
 
 ## Nom affichable d'une ressource (clé i18n si connue, sinon brut).
 static func resource(resource_name: String) -> String:
@@ -104,3 +106,17 @@ static func production_icon(resource_name: String, overlay: String) -> Control:
 			ph.position = Vector2.ZERO
 			stack.add_child(ph)
 	return stack
+
+## Sprite d'un survivant à sa taille standard, avec tooltip et hover actif.
+## Utilisé par la liste des éveillés, la carte de candidat cryo, la map et la
+## colony view (via le helper assigned_worker_sprite encore dans main_ui).
+static func survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
+	var sprite := TextureRect.new()
+	sprite.texture = load(SURVIVOR_SPRITE_PATH % s.sprite_variant)
+	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pour pixel art net
+	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
+	sprite.custom_minimum_size = tex_size * SURVIVOR_SPRITE_SCALE
+	sprite.tooltip_text = sprite_tooltip
+	sprite.mouse_filter = Control.MOUSE_FILTER_STOP  # pour que hover/clic marche
+	return sprite

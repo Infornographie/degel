@@ -373,29 +373,11 @@ func _add_synth_slot(b: Building) -> void:
 	info.modulate = Color(0.7, 0.7, 0.7)
 	vbox.add_child(info)
 
-func _add_cryo_slot(b: Building) -> void:
+func _add_cryo_slot(_b: Building) -> void:
 	var panel := _new_slot_panel(true)
 	_colony_grid.add_child(panel)
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 4)
-	panel.add_child(vbox)
-	vbox.add_child(_slot_title(tr(b.config.name_key)))
-	var sprites_row := HBoxContainer.new()
-	sprites_row.add_theme_constant_override("separation", 4)
-	sprites_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	vbox.add_child(sprites_row)
-	for cid in GameState.candidates:
-		var s: Survivor = GameState.roster.get_by_id(cid)
-		if s == null:
-			continue
-		sprites_row.add_child(_make_candidate_card(s))
-	# Compteur des endormis restants
-	var count_label := Label.new()
-	count_label.text = tr("LABEL_STILL_IN_CRYO") % GameState.roster.sleeping_count()
-	count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	count_label.add_theme_font_size_override("font_size", 12)
-	count_label.modulate = Color(0.7, 0.7, 0.7)
-	vbox.add_child(count_label)
+	var view: CryoView = preload("res://scenes/ui/buildings/cryo_view.tscn").instantiate()
+	panel.add_child(view)
 
 func _new_slot_panel(is_bunker: bool = false) -> PanelContainer:
 	var panel := PanelContainer.new()
@@ -597,7 +579,7 @@ func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
 		_map_container.add_child(icons_row)
 	# Sprite du worker PAR-DESSUS, centré
 	var sprite := TextureRect.new()
-	sprite.texture = load(SURVIVOR_SPRITE_PATH % s.sprite_variant)
+	sprite.texture = load(UiPresentation.SURVIVOR_SPRITE_PATH % s.sprite_variant)
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -764,7 +746,7 @@ func _add_awake_row(s: Survivor) -> void:
 	]
 	if prod != "":
 		tooltip += "\n\n→ " + prod
-	var sprite := _make_survivor_sprite(s, tooltip)
+	var sprite := UiPresentation.survivor_sprite(s, tooltip)
 	_awake_list.add_child(sprite)
 
 func _format_output(s: Survivor) -> String:
@@ -838,33 +820,6 @@ func _on_nightly_deaths(events: Array) -> void:
 		return
 	_show_popup(tr("NEWS_TITLE"), tr("NEWS_INTRO") + "\n\n" + "\n".join(lines))
 
-func _make_candidate_card(s: Survivor) -> Control:
-	var tooltip := "%s\n%s\n\n%s" % [
-		s.name,
-		tr(s.profession),
-		tr("BTN_WAKE") % GameState.config.wake_cost,
-	]
-	var vbox := VBoxContainer.new()
-	vbox.add_theme_constant_override("separation", 2)
-	# Sprite couché (rotation -45°)
-	var sprite := _make_survivor_sprite(s, tooltip)
-	sprite.pivot_offset = sprite.custom_minimum_size * 0.5
-	sprite.rotation = deg_to_rad(-75)
-	var sprite_wrap := Control.new()
-	sprite_wrap.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	sprite_wrap.custom_minimum_size = sprite.custom_minimum_size
-	sprite_wrap.add_child(sprite)
-	vbox.add_child(sprite_wrap)
-	# Bouton wake dessous
-	var btn := Button.new()
-	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	btn.text = tr("BTN_WAKE_SHORT")
-	btn.disabled = not GameState.can_wake(s.id)
-	var sid := s.id
-	btn.pressed.connect(func(): GameState.wake(sid))
-	vbox.add_child(btn)
-	return vbox
-
 func _on_computer_pressed() -> void:
 	var dialog := AcceptDialog.new()
 	dialog.title = tr("POPUP_COMPUTER_TITLE")
@@ -904,20 +859,6 @@ func _make_label(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	return label
-
-const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic%d.png"
-const SURVIVOR_SPRITE_SCALE := 4
-
-func _make_survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
-	var sprite := TextureRect.new()
-	sprite.texture = load("res://assets/survivors/generic%d.png" % s.sprite_variant)
-	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pour pixel art net
-	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
-	sprite.custom_minimum_size = tex_size * SURVIVOR_SPRITE_SCALE
-	sprite.tooltip_text = sprite_tooltip
-	sprite.mouse_filter = Control.MOUSE_FILTER_STOP  # pour que le hover/clic marche
-	return sprite
 
 var _resources_bar: HBoxContainer
 const RESOURCE_ORDER: Array[String] = ["food", "wood", "ore", "tools"]
@@ -1084,7 +1025,7 @@ func _make_assigned_worker_sprite(s: Survivor) -> Control:
 		tr(s.profession),
 		tr("TOOLTIP_CLICK_TO_UNASSIGN"),
 	]
-	var sprite := _make_survivor_sprite(s, tooltip)
+	var sprite := UiPresentation.survivor_sprite(s, tooltip)
 	sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	var sid := s.id
 	sprite.gui_input.connect(func(event: InputEvent):

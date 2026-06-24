@@ -13,6 +13,14 @@
 - **Mode de travail** : 1 séance = 1 étape qui tourne, cadrage de design avant code, commits étape par étape
 ---
  
+### Pattern UI émergent
+
+- **Vues transversales** (panneaux globaux comme la production) : `res://scenes/ui/*.tscn`.
+- **Vues de bâtiment** : `res://scenes/ui/buildings/<building_id>_view.tscn`. À terme une vue par bâtiment ; les mécaniques de transformation pourront être factorisées via une base commune quand on aura 2-3 vues de transformation extraites (campfire, kitchen, tool_workshop, synthesizer).
+- **Composition** : MainUi reste responsable du layout (grille colony, position des panels). Les vues gèrent uniquement leur contenu et s'abonnent directement à GameState pour leurs refreshs.
+- **Coquille minimale (B1)** : la `.tscn` contient un Control racine, le script construit le contenu dynamique. On étoffera la `.tscn` quand les assets arriveront.
+---
+
 ## ✅ Jalons accomplis
  
 ### Phase 1 — Squelette de simulation (Jalons 1 à 4)
@@ -83,6 +91,7 @@ Refacto de la dette accumulée. Trois sous-phases identifiées, deux faites.
 
 - **2 — Extraction des helpers UI.** Création de `res://scenes/ui/ui_presentation.gd` (`class_name UiPresentation`, static func). Cinq helpers déplacés depuis `main_ui.gd` : `resource`, `placeholder_color`, `tile_label`, `activity`, `activity_for_building`. 11 call sites mis à jour. Nom dévié de `ui_labels.gd` vers `ui_presentation.gd` parce que le fichier contient aussi `placeholder_color` qui n'est pas un label.
 - **3a — Extraction de ProductionView (première vue séparée).** Pattern posé : une vue = une `.tscn` minimale (B1, coquille seule) + un script `class_name XxxView extends Control`, qui s'abonne directement aux signals de GameState. Instanciée par MainUi via `preload(...).instantiate()`. UiPresentation augmenté avec `resource_icon()` et `production_icon()` + constantes sprite, désormais consommé par MainUi (pills) et ProductionView (lignes de prod). `main_ui.gd` réduit de ~210 lignes (1367 → ~1157).
+- **3b — Extraction de CryoView + structure `buildings/`.** Sous-dossier `res://scenes/ui/buildings/` introduit pour les vues spécifiques à un type de bâtiment. CryoView extraite : contenu du slot cryo (sprites candidats inclinés + compteur). Le panel et le style "slot bunker" restent côté MainUi (responsabilité layout colony grid) — CryoView gère uniquement son contenu. `UiPresentation` augmenté avec `survivor_sprite()` (≥3 usages : CryoView, future SurvivorsView, helper assigned_worker_sprite). `main_ui.gd` réduit de ~50 lignes (1158 → ~1108).
 - **4 — Suppression du legacy Job.** `enum Job`, `var job_outputs` et son init dans `game_state.gd`. Fonctions mortes `_on_tile_popup_selected` et `_aggregate_production` dans `main_ui.gd`. Commentaire obsolète sur `GameState.Job.X` dans `hex_tile.gd`. Confirmé par grep global : zéro référence restante.
 
 Sous-phase 3 (les autres vues : ColonyView, MapView, SurvivorsView, CryoView, InfosSection) reste à faire — pattern validé, reproduction vue par vue.
