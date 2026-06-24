@@ -776,24 +776,11 @@ func _show_popup(title: String, message: String) -> void:
 	dialog.canceled.connect(dialog.queue_free)
 
 func _on_nightly_deaths(events: Array) -> void:
-	var lines: Array[String] = []
-	for entry in events:
-		match entry.get("type", ""):
-			"death":
-				if entry.cause == "switched off":
-					lines.append(tr("NEWS_SWITCHED_OFF") % [entry.name, tr(entry.profession)])
-				elif entry.cause == "starved":
-					lines.append(tr("NEWS_STARVED") % [entry.name, tr(entry.profession)])
-				else:
-					lines.append("%s (%s) — %s." % [entry.name, tr(entry.profession), entry.cause])
-			"activity_failed":
-				lines.append(tr("NEWS_HUNT_FAILED") % [entry.name, tr(entry.profession)])
-			"tile_mutated":
-				lines.append(tr("NEWS_TILE_MUTATED"))
-			"building_completed":
-				lines.append(tr("NEWS_BUILDING_DONE") % tr(entry.building_key))
-	if lines.is_empty():
+	if events.is_empty():
 		return
+	var lines: Array[String] = []
+	for ev in events:
+		lines.append(ev.format())
 	_show_popup(tr("NEWS_TITLE"), tr("NEWS_INTRO") + "\n\n" + "\n".join(lines))
 
 func _on_computer_pressed() -> void:

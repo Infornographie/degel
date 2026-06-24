@@ -151,35 +151,24 @@ func gather_risky() -> Array:
 #  EXÉCUTION (commit) — ordre canonique avec aléatoire
 # ──────────────────────────────────────────────────────────────────────────
 
-## Exécute réellement le tour sur gs.resources. Retourne une liste d'événements
-## (chasses, mutations…) pour la news. Les morts sont ajoutées à gs._deaths_this_turn
-## par les résolutions dédiées (famine, extinction).
-func execute_turn() -> Array:
-	var events: Array = []
+## Exécute réellement le tour sur gs.resources. Les événements (chasses,
+## mutations, constructions, morts...) sont enregistrés via gs.log_event().
+func execute_turn() -> void:
 	var mult: float = gs.production_multiplier
-
 	# 1) RISKY d'abord : le gain peut servir dès ce tour.
-	events += _resolve_risky(mult)
-
+	_resolve_risky(mult)
 	# 2) Production des tuiles déterministe.
 	_resolve_tile_production(mult)
-
 	# 3) Construction.
-	var build_events := _resolve_construction()
-	events += build_events
-
+	_resolve_construction()
 	# 4) Bâtiments opérationnels.
 	_resolve_buildings_operation()
-
 	# 5) Mutations de tuiles (forêt épuisée → plaine).
-	events += _resolve_tile_mutations()
-
-	return events
+	_resolve_tile_mutations()
 
 # ── Étapes d'exécution ──
 
-func _resolve_risky(mult: float) -> Array:
-	var events: Array = []
+func _resolve_risky(mult: float) -> void:
 	for tile in gs.hex_map.tiles.values():
 		if tile.worker_id == -1:
 			continue
@@ -191,11 +180,7 @@ func _resolve_risky(mult: float) -> Array:
 			continue
 		# Inputs (rare pour une activité risquée, mais on respecte le modèle)
 		if not _has_inputs(gs.resources, activity.inputs, 1.0):
-			events.append({
-				"type": "activity_no_inputs",
-				"name": s.name, "profession": s.profession,
-				"activity_key": activity.name_key,
-			})
+			gs.log_event("colony", "EVENT_HUNT_NO_INPUTS", [s.name, "tr:" + s.profession])
 			continue
 		for input_name in activity.inputs:
 			gs.resources[input_name] = gs.resources.get(input_name, 0.0) - activity.inputs[input_name]
@@ -205,16 +190,11 @@ func _resolve_risky(mult: float) -> Array:
 			var produced: float = _apply_multiplier(raw, mult)
 			if activity.produced_resource != "" and produced > 0.0:
 				gs.resources[activity.produced_resource] = gs.resources.get(activity.produced_resource, 0.0) + produced
-			# Effet sur la tuile (dégradation/restauration), même pour risky
+			gs.log_event("colony", "EVENT_HUNT_SUCCESS", [s.name, "tr:" + s.profession])
 			if activity.tile_health_delta != 0:
 				tile.health = max(0, tile.health + activity.tile_health_delta)
 		else:
-			events.append({
-				"type": "activity_failed",
-				"name": s.name, "profession": s.profession,
-				"activity_key": activity.name_key,
-			})
-	return events
+			gs.log_event("colony", "EVENT_HUNT_FAIL", [s.name, "tr:" + s.profession])
 
 func _resolve_tile_production(mult: float) -> void:
 	# Production sûre + effets de santé. (Les risky sont déjà résolues.)
@@ -243,21 +223,20 @@ func _resolve_tile_production(mult: float) -> void:
 		if produced > 0.0:
 			gs.resources[activity.produced_resource] = gs.resources.get(activity.produced_resource, 0.0) + produced
 
-func _resolve_construction() -> Array:
-	var events: Array = []
+func _resolve_construction() -> void:
 	var zone: Building = gs._find_building_by_type("construction_zone")
 	if zone == null or zone.construction_target == "":
-		return events
+		return
 	var target: Building = gs._find_building_by_instance(int(zone.construction_target))
 	if target == null or target.state != Building.State.UNDER_CONSTRUCTION:
-		return events
+		return
 	var total_work: float = 0.0
 	for wid in zone.worker_ids:
 		var s: Survivor = gs.roster.get_by_id(wid)
 		if s != null and s.awake:
 			total_work += s.work_force
 	if total_work <= 0.0:
-		return events
+		return
 	var work_left: float = total_work
 	var order: Array = _build_order(target)
 	for resource_name in order:
@@ -282,10 +261,7 @@ func _resolve_construction() -> Array:
 			break
 	if done:
 		target.complete_construction()
-		events.append({
-			"type": "building_completed",
-			"building_key": target.config.name_key,
-		})
+		gs.log_event("colony", "EVENT_CONSTRUCTION_COMPLETED", ["tr:" + target.config.name_key])
 		if zone.construction_target == str(target.instance_id):
 			zone.construction_target = ""
 			# Bascule auto sur un autre chantier en cours, s'il y en a.
@@ -294,7 +270,6 @@ func _resolve_construction() -> Array:
 					zone.construction_target = str(other.instance_id)
 					break
 		gs.construction_completed.emit(target)
-	return events
 
 func _resolve_buildings_operation() -> void:
 	for b in gs.buildings:
@@ -311,17 +286,11 @@ func _resolve_buildings_operation() -> void:
 			var produced: float = b.config.outputs[output_name] * bmult * factor
 			gs.resources[output_name] = gs.resources.get(output_name, 0.0) + produced
 
-func _resolve_tile_mutations() -> Array:
-	var events: Array = []
+func _resolve_tile_mutations() -> void:
 	for tile in gs.hex_map.tiles.values():
 		if tile.type == HexTile.Type.FOREST and tile.health >= 5:
 			gs.hex_map.mutate_tile(tile, HexTile.Type.PLAINS)
-			events.append({
-				"type": "tile_mutated",
-				"from": "forest", "to": "plains",
-				"tile_key": tile.key(),
-			})
-	return events
+			gs.log_event("system", "EVENT_FOREST_DEPLETED", [])
 
 # ──────────────────────────────────────────────────────────────────────────
 #  HELPERS PARTAGÉS (utilisés par flux ET exécution)

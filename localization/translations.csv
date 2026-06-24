@@ -136,8 +136,19 @@ PROD_HEADER_IMPOSSIBLE,Impossible,Impossible
 PROD_RISKY_TITLE,Production aléatoire,Random production
 NEWS_TITLE,Nouvelles du bunker,News from the bunker
 NEWS_INTRO,La nuit dernière :,Last night:
-NEWS_SWITCHED_OFF,%s (%s) a été débranché(e).,%s (%s) was switched off.
-NEWS_STARVED,%s (%s) est mort(e) de faim.,%s (%s) starved to death.
-NEWS_HUNT_FAILED,%s (%s) est rentré(e) bredouille de la chasse.,%s (%s) came back empty-handed from the hunt.
-NEWS_TILE_MUTATED,Une forêt épuisée s'est transformée en plaine.,An exhausted forest has turned into plains.
-NEWS_BUILDING_DONE,Construction terminée : %s.,Construction complete: %s.
+EVENT_WAKE,%s (%s) émerge de la cryo.,%s (%s) wakes from cryosleep.
+EVENT_TARGETED_WAKE_SUCCESS,%s (%s) est repéré·e dans la cryo.,%s (%s) located in cryo.
+EVENT_TARGETED_WAKE_FAIL,Aucun·e %s trouvé·e en cryo.,No %s found in cryo.
+EVENT_DEATH_STARVED,%s (%s) est mort·e de faim.,%s (%s) starved to death.
+EVENT_DEATH_SWITCHED_OFF,%s (%s) a été éteint·e cette nuit.,%s (%s) was switched off.
+EVENT_FAMINE_STARTED,La famine s'installe.,Famine sets in.
+EVENT_FAMINE_ENDED,La famine recule.,Famine recedes.
+EVENT_REACTOR_DECAY,Le réacteur perd 1 d'output (%.0f restant).,Reactor loses 1 output (%.0f left).
+EVENT_CONSTRUCTION_STARTED,Chantier lancé : %s.,Construction started: %s.
+EVENT_CONSTRUCTION_COMPLETED,%s achevé.,%s completed.
+EVENT_HUNT_SUCCESS,%s (%s) revient avec du gibier.,%s (%s) returns with prey.
+EVENT_HUNT_FAIL,%s (%s) rentre bredouille.,%s (%s) returns empty-handed.
+EVENT_HUNT_NO_INPUTS,%s (%s) manque d'outils pour chasser.,%s (%s) lacks tools for hunting.
+EVENT_FOREST_DEPLETED,Une forêt est devenue plaine.,A forest has become plain.
+LABEL_EVENT_LOG_TITLE,Journal,Journal
+LABEL_EVENT_TURN_PREFIX,[T%d],[T%d]

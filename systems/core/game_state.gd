@@ -48,6 +48,26 @@ var building_registry: BuildingRegistry
 var buildings: Array[Building] = []
 var _next_building_instance_id: int = 0
 
+# ── Journal d'événements ──
+signal event_logged(event: GameEvent)
+var event_log: Array[GameEvent] = []
+
+## Ajoute un événement au journal. Émet event_logged pour les vues qui
+## écoutent en streaming (journal UI). Les news de fin de tour filtrent
+## event_log par turn via events_for_turn().
+func log_event(category: String, key: String, params: Array = []) -> void:
+	var ev := GameEvent.new(turn, category, key, params)
+	event_log.append(ev)
+	event_logged.emit(ev)
+
+## Retourne tous les events loggés à un tour donné.
+func events_for_turn(t: int) -> Array[GameEvent]:
+	var result: Array[GameEvent] = []
+	for ev in event_log:
+		if ev.turn == t:
+			result.append(ev)
+	return result
+
 # --- Nécrologie (pour 5f) ---
 var _deaths_this_turn: Array = []
 var necrology: Array = []  # entrées { name, profession, cause, turn }
@@ -123,6 +143,7 @@ func wake(id: int) -> bool:
 	s.wake_order = _next_wake_order
 	_next_wake_order += 1
 	survivor_woken.emit(s)
+	log_event("colony", "EVENT_WAKE", [s.name, "tr:" + s.profession])
 	candidates.erase(s.id)
 	_clean_candidates()
 	resources_changed.emit(resources)
@@ -244,7 +265,7 @@ func advance_turn() -> void:
 	_deaths_this_turn.clear()
 
 	# 1) Résolution déterministe + aléatoire (production, construction, bâtiments, mutations)
-	var events: Array = turn_resolver.execute_turn()
+	turn_resolver.execute_turn()
 
 	# 2) Repas + famine
 	var needed: float = awake_count() * config.food_per_survivor
@@ -256,12 +277,14 @@ func advance_turn() -> void:
 			_deaths_triggered = false
 			production_multiplier = 1.0
 			famine_ended.emit()
+			log_event("system", "EVENT_FAMINE_ENDED", [])
 	else:
 		resources["food"] = 0.0
 		famine_turns += 1
 		production_multiplier = FAMINE_PROD_MULTIPLIER
 		if not was_in_famine:
 			famine_started.emit()
+			log_event("system", "EVENT_FAMINE_STARTED", [])
 		_resolve_famine_deaths()
 
 	# 3) Extinction des cryos si élec négative
@@ -270,6 +293,7 @@ func advance_turn() -> void:
 	# 4) Érosion du réacteur
 	if turn % config.reactor_decay_interval == 0:
 		reactor_output -= 1.0
+		log_event("system", "EVENT_REACTOR_DECAY", [reactor_output])
 		if reactor_output <= 0.0:
 			reactor_output = 0.0
 			is_over = true
@@ -287,10 +311,8 @@ func advance_turn() -> void:
 		return
 
 	_begin_turn()
-	# News : morts de la nuit + événements de production (chasses, mutations, constructions)
-	var news: Array = events.duplicate()
-	for d in _deaths_this_turn:
-		news.append({"type": "death", "name": d.name, "profession": d.profession, "cause": d.cause})
+	# News : tous les events de ce tour, vus à travers le log.
+	var news: Array[GameEvent] = events_for_turn(turn)
 	if not news.is_empty():
 		nightly_deaths.emit(news)
 	turn_advanced.emit(turn)
@@ -333,6 +355,7 @@ func _extinguish(victim: Survivor) -> void:
 	}
 	necrology.append(entry)
 	_deaths_this_turn.append(entry)
+	log_event("loss", "EVENT_DEATH_SWITCHED_OFF", [victim.name, "tr:" + victim.profession])
 
 func _sleeping_survivors() -> Array[Survivor]:
 	var result: Array[Survivor] = []
@@ -366,6 +389,7 @@ func _resolve_famine_deaths() -> void:
 			}
 			necrology.append(entry)
 			_deaths_this_turn.append(entry)
+			log_event("loss", "EVENT_DEATH_STARVED", [victim.name, "tr:" + victim.profession])
 
 # ── HELPERS INTERNES ──
 func _begin_turn() -> void:
@@ -405,6 +429,7 @@ func targeted_wake(profession: String) -> bool:
 	var s: Survivor = roster.find_sleeping_by_profession(profession)
 	if s == null:
 		targeted_wake_failed.emit(profession)
+		log_event("colony", "EVENT_TARGETED_WAKE_FAIL", ["tr:" + profession])
 		candidates_changed.emit()
 		resources_changed.emit(resources)
 		return false
@@ -412,6 +437,7 @@ func targeted_wake(profession: String) -> bool:
 	s.wake_order = _next_wake_order
 	_next_wake_order += 1
 	survivor_woken.emit(s)
+	log_event("colony", "EVENT_TARGETED_WAKE_SUCCESS", [s.name, "tr:" + s.profession])
 	candidates.erase(s.id)
 	_clean_candidates()
 	resources_changed.emit(resources)
@@ -461,6 +487,7 @@ func start_construction(target_type_id: String, slot_index: int) -> bool:
 	if zone != null:
 		zone.construction_target = str(b.instance_id)
 	construction_started.emit(b)
+	log_event("colony", "EVENT_CONSTRUCTION_STARTED", ["tr:" + target_config.name_key])
 	return true
 
 ## Change la cible active de la zone de construction (par instance_id).
