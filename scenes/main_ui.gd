@@ -4,7 +4,6 @@ extends Control
 
 const BUNKER_BUILDING_IDS: Array[String] = ["computer", "cryo_room", "synthesizer"]
 
-var _famine_label: Label
 var _awake_header: Label
 var _awake_list: HBoxContainer
 var _advance_button: Button
@@ -16,7 +15,6 @@ var _popup_tile_key: String = ""
 var _popup_submenus: Array[PopupMenu] = []
 var _colony_grid: GridContainer
 const COLONY_SLOTS: int = 12
-var _infos_section: VBoxContainer
 var _placement_mode_type_id: String = ""  # si non vide, on est en mode placement d'un type donné
 
 
@@ -90,12 +88,11 @@ func _build_ui() -> void:
 	middle_row.add_theme_constant_override("separation", 16)
 	main_vbox.add_child(middle_row)
 
-	var infos_panel := VBoxContainer.new()
-	infos_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	infos_panel.size_flags_stretch_ratio = 0.20
-	infos_panel.clip_contents = true
-	middle_row.add_child(infos_panel)
-	_build_infos_section(infos_panel)
+	var infos_section: InfosSection = preload("res://scenes/ui/infos_section.tscn").instantiate()
+	infos_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	infos_section.size_flags_stretch_ratio = 0.20
+	infos_section.clip_contents = true
+	middle_row.add_child(infos_section)
 
 	# Awakened : scrollable et clippé pour ne pas pousser les autres
 	var awake_scroll := ScrollContainer.new()
@@ -120,11 +117,6 @@ func _build_ui() -> void:
 	resources_row.custom_minimum_size = Vector2(0, 50)
 	main_vbox.add_child(resources_row)
 	_build_resources_bar(resources_row)
-
-func _build_infos_section(parent: VBoxContainer) -> void:
-	_infos_section = VBoxContainer.new()
-	parent.add_child(_infos_section)
-	_famine_label = _add_label(parent, "")
 
 func _build_survivors_section(parent: VBoxContainer) -> void:
 	_awake_header = _add_label(parent, tr("LABEL_AWAKE") % 0)
@@ -687,26 +679,10 @@ func _on_submenu_selected(index: int, sub: PopupMenu) -> void:
 # --- Refresh ---
 
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
-	_rebuild_resources()  # met à jour les infos (turn, élec, famine)
-	_famine_label.text = tr("LABEL_FAMINE") % GameState.famine_turns if GameState.famine_turns > 0 else ""
 	_rebuild_lists()
 	_draw_map()
 	_draw_colony()
 	_rebuild_resources_bar()
-
-func _rebuild_resources() -> void:
-	for child in _infos_section.get_children():
-		child.queue_free()
-	_add_label(_infos_section, tr("LABEL_TURN") % GameState.turn)
-	# Bloc énergie
-	var elec_value: float = GameState.resources["electricity"]
-	var elec_parts: Array[String] = []
-	elec_parts.append(tr("LABEL_REACTOR") % GameState.reactor_output)
-	var synth: Building = GameState._find_building_by_type("synthesizer")
-	if synth != null and synth.active:
-		elec_parts.append(tr("LABEL_SYNTH_COST") % GameState.SYNTH_ELECTRICITY_COST)
-	elec_parts.append(tr("LABEL_USABLE") % elec_value)
-	_add_label(_infos_section, tr("LABEL_ELEC_HEADER") + " | ".join(elec_parts))
 
 # --- Listes survivants ---
 
