@@ -115,7 +115,10 @@ func _build_ui() -> void:
 	resources_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	resources_row.custom_minimum_size = Vector2(0, 50)
 	main_vbox.add_child(resources_row)
-	_build_resources_bar(resources_row)
+	var resources_bar: ResourcesBar = preload("res://scenes/ui/resources_bar.tscn").instantiate()
+	resources_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	resources_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	resources_row.add_child(resources_bar)
 
 func _build_buttons_section(parent: VBoxContainer) -> void:
 	_advance_button = Button.new()
@@ -674,7 +677,6 @@ func _on_submenu_selected(index: int, sub: PopupMenu) -> void:
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
 	_draw_map()
 	_draw_colony()
-	_rebuild_resources_bar()
 
 func _on_advance_pressed() -> void:
 	GameState.advance_turn()
@@ -764,41 +766,6 @@ func _make_label(text: String) -> Label:
 	var label := Label.new()
 	label.text = text
 	return label
-
-var _resources_bar: HBoxContainer
-const RESOURCE_ORDER: Array[String] = ["food", "wood", "ore", "tools"]
-
-func _build_resources_bar(parent: HBoxContainer) -> void:
-	var scroll := ScrollContainer.new()
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	parent.add_child(scroll)
-	_resources_bar = HBoxContainer.new()
-	_resources_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_resources_bar.add_theme_constant_override("separation", 24)
-	scroll.add_child(_resources_bar)
-
-func _rebuild_resources_bar() -> void:
-	if _resources_bar == null:
-		return
-	for child in _resources_bar.get_children():
-		child.queue_free()
-	for resource_name in RESOURCE_ORDER:
-		_resources_bar.add_child(_make_resource_pill(resource_name))
-
-func _make_resource_pill(resource_name: String) -> HBoxContainer:
-	var pill := HBoxContainer.new()
-	pill.add_theme_constant_override("separation", 6)
-	pill.tooltip_text = UiPresentation.resource(resource_name)
-	pill.add_child(UiPresentation.resource_icon(resource_name, UiPresentation.RESOURCE_SPRITE_SIZE))
-	# Valeur
-	var value: float = GameState.resources.get(resource_name, 0.0)
-	var label := Label.new()
-	label.text = "%.0f" % value
-	label.add_theme_font_size_override("font_size", 16)
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	pill.add_child(label)
-	return pill
 
 func _add_construction_zone_slot(b: Building) -> void:
 	var panel := _new_slot_panel(false)

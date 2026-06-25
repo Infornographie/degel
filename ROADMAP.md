@@ -95,6 +95,7 @@ Refacto de la dette accumulée. Trois sous-phases identifiées, deux faites.
 - **3c — Extraction d'InfosSection.** Vue transversale du panneau d'infos haut-gauche (tour, électricité, label famine). Lecture seule, abonnée directement à turn_advanced, resources_changed, famine_started/ended, building_assignment_changed. main_ui.gd réduit de ~20 lignes.
 - **3d — Extraction d'InfosSection + journal d'événements.** Vue transversale du panneau d'infos haut-gauche, enrichie d'un journal scrollable. Nouvelle infrastructure générique : `GameEvent` (turn + category + key + params) stocké dans `GameState.event_log`, alimenté via `log_event()` et diffusé via signal `event_logged`. 14 sites instrumentés à travers `game_state` et `turn_resolver`. Le popup nightly et le journal partagent désormais une source unique. Convention `"tr:CLÉ"` dans les params pour la localisation à chaud.
 - **3e — Extraction de SurvivorsView.** Vue transversale liste des éveillés (sprites triés par ordre de réveil + tooltips détaillés). Lecture seule. Aucune nouvelle dépendance, consomme `UiPresentation.survivor_sprite()` et `UiPresentation.activity()` / `tile_label()`. `main_ui.gd` réduit de ~50 lignes.
+- **3f — Extraction de ResourcesBar.** Vue transversale de la barre des stocks (food/wood/ore/tools, scrollable horizontalement). Lecture seule, abonnée à `resources_changed`. `main_ui.gd` réduit de ~33 lignes.
 - **4 — Suppression du legacy Job.** `enum Job`, `var job_outputs` et son init dans `game_state.gd`. Fonctions mortes `_on_tile_popup_selected` et `_aggregate_production` dans `main_ui.gd`. Commentaire obsolète sur `GameState.Job.X` dans `hex_tile.gd`. Confirmé par grep global : zéro référence restante.
 
 Sous-phase 3 (les autres vues : ColonyView, MapView, SurvivorsView, CryoView, InfosSection) reste à faire — pattern validé, reproduction vue par vue.
@@ -154,6 +155,8 @@ Deux mécaniques actuelles le portent déjà :
  
 **News popup étendu.** L'infrastructure existe (`nightly_deaths` → `_on_nightly_deaths` qui affiche). À étendre avec un vrai journal du tour : constructions terminées, chasses ratées, transformations de tuiles, événements narratifs.
  
+**Z-order et superposition des panneaux UI.** Plusieurs vues se chevauchent en transparence (ProductionView lisible sous les boutons, SurvivorsView invisible quand recouverte). À diagnostiquer quand on attaquera le polish visuel
+
 ### Direction graphique
  
 - Tile-sets hex en pixel art (en cours, contribution fils d'Anthony)
