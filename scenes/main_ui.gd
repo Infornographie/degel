@@ -4,8 +4,6 @@ extends Control
 
 const BUNKER_BUILDING_IDS: Array[String] = ["computer", "cryo_room", "synthesizer"]
 
-var _advance_button: Button
-var _status_label: Label
 var _map_container: Control
 var _tile_popup: PopupMenu
 var _popup_tile_key: String = ""
@@ -108,7 +106,11 @@ func _build_ui() -> void:
 	buttons_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons_panel.size_flags_stretch_ratio = 0.25
 	middle_row.add_child(buttons_panel)
-	_build_buttons_section(buttons_panel)
+	var buttons_section: ButtonsSection = preload("res://scenes/ui/buttons_section.tscn").instantiate()
+	buttons_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buttons_section.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	buttons_section.language_toggled.connect(_rebuild_ui)
+	buttons_panel.add_child(buttons_section)
 
 	# Rang du bas : resources bar
 	var resources_row := HBoxContainer.new()
@@ -119,31 +121,6 @@ func _build_ui() -> void:
 	resources_bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	resources_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	resources_row.add_child(resources_bar)
-
-func _build_buttons_section(parent: VBoxContainer) -> void:
-	_advance_button = Button.new()
-	_advance_button.text = tr("BTN_ADVANCE")
-	_advance_button.pressed.connect(_on_advance_pressed)
-	parent.add_child(_advance_button)
-	var necro_btn := Button.new()
-	necro_btn.text = tr("BTN_NECROLOGY")
-	necro_btn.pressed.connect(_on_necrology_pressed)
-	parent.add_child(necro_btn)
-	var lang_btn := Button.new()
-	lang_btn.text = tr("BTN_TOGGLE_LANG")
-	lang_btn.pressed.connect(_on_toggle_lang_pressed)
-	parent.add_child(lang_btn)
-	var quit_btn := Button.new()
-	quit_btn.text = tr("BTN_QUIT")
-	quit_btn.pressed.connect(get_tree().quit)
-	parent.add_child(quit_btn)
-	_status_label = _add_label(parent, "")
-
-func _on_toggle_lang_pressed() -> void:
-	var current := TranslationServer.get_locale()
-	var new_locale := "en" if current.begins_with("fr") else "fr"
-	TranslationServer.set_locale(new_locale)
-	_rebuild_ui()
 
 func _rebuild_ui() -> void:
 	for child in get_children():
@@ -678,46 +655,15 @@ func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
 	_draw_map()
 	_draw_colony()
 
-func _on_advance_pressed() -> void:
-	GameState.advance_turn()
-
-func _on_run_ended(cause: GameState.EndCause) -> void:
-	var label := ""
-	match cause:
-		GameState.EndCause.REACTOR_DEAD: label = tr("LABEL_REACTOR_DEAD")
-		GameState.EndCause.COLONY_LOST: label = tr("LABEL_COLONY_LOST")
+func _on_run_ended(_cause: GameState.EndCause) -> void:
 	var score = GameState.compute_score()
 	var message := tr("POPUP_FINAL_SCORE") % [
 		score.survivors_saved, score.survivors_total]
-	_show_popup(tr("POPUP_RUN_ENDED"), message)
-	_status_label.text = tr("LABEL_RUN_ENDED") % label
-	_advance_button.disabled = true
+	UiPresentation.show_popup(self, tr("POPUP_RUN_ENDED"), message)
 
 func _on_synth_toggled(pressed: bool) -> void:
 	GameState.set_synth(pressed)
 	_refresh()
-
-func _on_necrology_pressed() -> void:
-	var lines: Array[String] = []
-	for entry in GameState.necrology:
-		var cause_label: String = entry.cause
-		if entry.cause == "switched off":
-			cause_label = tr("DEATH_SWITCHED_OFF")
-		elif entry.cause == "starved":
-			cause_label = tr("DEATH_STARVED")
-		lines.append(tr("POPUP_NECROLOGY_LINE") % [
-			entry.turn, entry.name, tr(entry.profession), cause_label])
-	var content := "\n".join(lines) if not lines.is_empty() else tr("POPUP_NECROLOGY_EMPTY")
-	_show_popup(tr("BTN_NECROLOGY"), content)
-
-func _show_popup(title: String, message: String) -> void:
-	var dialog := AcceptDialog.new()
-	dialog.title = title
-	dialog.dialog_text = message
-	add_child(dialog)
-	dialog.popup_centered()
-	dialog.confirmed.connect(dialog.queue_free)
-	dialog.canceled.connect(dialog.queue_free)
 
 func _on_nightly_deaths(events: Array) -> void:
 	if events.is_empty():
@@ -725,7 +671,7 @@ func _on_nightly_deaths(events: Array) -> void:
 	var lines: Array[String] = []
 	for ev in events:
 		lines.append(ev.format())
-	_show_popup(tr("NEWS_TITLE"), tr("NEWS_INTRO") + "\n\n" + "\n".join(lines))
+	UiPresentation.show_popup(self, tr("NEWS_TITLE"), tr("NEWS_INTRO") + "\n\n" + "\n".join(lines))
 
 func _on_computer_pressed() -> void:
 	var dialog := AcceptDialog.new()

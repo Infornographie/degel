@@ -120,3 +120,14 @@ static func survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
 	sprite.tooltip_text = sprite_tooltip
 	sprite.mouse_filter = Control.MOUSE_FILTER_STOP  # pour que hover/clic marche
 	return sprite
+
+## Affiche un AcceptDialog modal centré. `parent` doit être un Node de la
+## scène courante (typiquement la vue qui appelle, ou MainUi).
+static func show_popup(parent: Node, title: String, message: String) -> void:
+	var dialog := AcceptDialog.new()
+	dialog.title = title
+	dialog.dialog_text = message
+	parent.add_child(dialog)
+	dialog.popup_centered()
+	dialog.confirmed.connect(dialog.queue_free)
+	dialog.canceled.connect(dialog.queue_free)
