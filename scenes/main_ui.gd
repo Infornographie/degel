@@ -2,16 +2,12 @@ extends Control
 ## UI placeholder — 4c. Carte interactive, jobs territorialisés.
 
 
-const BUNKER_BUILDING_IDS: Array[String] = ["computer", "cryo_room", "synthesizer"]
-
 var _map_container: Control
 var _tile_popup: PopupMenu
 var _popup_tile_key: String = ""
 # id dans le sous-menu (encodé : survivor_id * 100 + job_id) → (survivor_id, job_id)
 var _popup_submenus: Array[PopupMenu] = []
-var _colony_grid: GridContainer
-const COLONY_SLOTS: int = 12
-var _placement_mode_type_id: String = ""  # si non vide, on est en mode placement d'un type donné
+var _colony_view: ColonyView
 
 
 func _ready() -> void:
@@ -54,7 +50,11 @@ func _build_ui() -> void:
 	settlement_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	settlement_panel.size_flags_stretch_ratio = 0.65
 	top_row.add_child(settlement_panel)
-	_build_colony_panel(settlement_panel)
+	_colony_view = preload("res://scenes/ui/colony_view.tscn").instantiate()
+	_colony_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_colony_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	_colony_view.set_render_slot_fn(_render_building_in_slot)
+	settlement_panel.add_child(_colony_view)
 
 	var right_column := VBoxContainer.new()
 	right_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -143,65 +143,20 @@ func _build_map_panel(parent: VBoxContainer) -> void:
 	_add_label(parent, tr("LABEL_LEGEND_1"))
 	_add_label(parent, tr("LABEL_LEGEND_2"))
 
-func _build_colony_panel(parent: VBoxContainer) -> void:
-	var title := _add_label(parent, tr("LABEL_COLONY_TITLE"))
-	title.add_theme_font_size_override("font_size", 16)
-	_colony_grid = GridContainer.new()
-	_colony_grid.columns = 4
-	_colony_grid.add_theme_constant_override("h_separation", 8)
-	_colony_grid.add_theme_constant_override("v_separation", 8)
-	_colony_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_colony_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	parent.add_child(_colony_grid)
-
-func _draw_colony() -> void:
-	if _colony_grid == null:
-		return
-	for child in _colony_grid.get_children():
-		_colony_grid.remove_child(child)  # synchrone
-		child.queue_free()
-	# Map slot_index → Building
-	var slot_to_building := {}
-	var computer: Building = _find_starter("computer")
-	var synth: Building = _find_starter("synthesizer")
-	var cryo: Building = _find_starter("cryo_room")
-	var zone: Building = _find_starter("construction_zone")
-	if computer != null:
-		computer.slot_index = 4
-		slot_to_building[4] = computer
-	if zone != null:
-		zone.slot_index = 5
-		slot_to_building[5] = zone
-	if cryo != null:
-		cryo.slot_index = 8
-		slot_to_building[8] = cryo
-	if synth != null:
-		synth.slot_index = 9
-		slot_to_building[9] = synth
-	for b in GameState.buildings:
-		if not b.config.is_starter and b.slot_index >= 0:
-			slot_to_building[b.slot_index] = b
-	for i in COLONY_SLOTS:
-		if slot_to_building.has(i):
-			_render_building_in_slot(slot_to_building[i])
-		else:
-			_add_empty_slot(i)
-
-func _render_building_in_slot(b: Building) -> void:
+func _render_building_in_slot(b: Building) -> Control:
 	match b.config.id:
-		"computer": _add_computer_slot(b)
-		"synthesizer": _add_synth_slot(b)
-		"cryo_room": _add_cryo_slot(b)
-		"construction_zone": _add_construction_zone_slot(b)
-		_: _add_generic_building_slot(b)
+		"computer": return _make_computer_slot(b)
+		"synthesizer": return _make_synth_slot(b)
+		"cryo_room": return _make_cryo_slot(b)
+		"construction_zone": return _make_construction_zone_slot(b)
+		_: return _make_generic_building_slot(b)
 
-func _add_generic_building_slot(b: Building) -> void:
-	var panel := _new_slot_panel(false)
-	_colony_grid.add_child(panel)
+func _make_generic_building_slot(b: Building) -> Control:
+	var panel := UiPresentation.slot_panel(false)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
 	panel.add_child(vbox)
-	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	vbox.add_child(UiPresentation.slot_title(tr(b.config.name_key)))
 	if b.state == Building.State.UNDER_CONSTRUCTION:
 		# Affichage progression
 		var status := Label.new()
@@ -210,7 +165,7 @@ func _add_generic_building_slot(b: Building) -> void:
 		status.add_theme_font_size_override("font_size", 10)
 		status.modulate = Color(0.7, 0.7, 0.7)
 		vbox.add_child(status)
-		# Icônes des ressources restantes — une ligne par ressource, resserrement si trop
+		# Icônes des ressources restantes
 		var order: Array[String] = b.config.build_order
 		if order.is_empty():
 			order = b.config.build_cost.keys()
@@ -248,7 +203,6 @@ func _add_generic_building_slot(b: Building) -> void:
 				GameState.set_active_construction(bid))
 	else:
 		# Bâtiment opérationnel
-		# Affichage des colons assignés
 		var workers_row := HBoxContainer.new()
 		workers_row.add_theme_constant_override("separation", 4)
 		workers_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -264,7 +218,7 @@ func _add_generic_building_slot(b: Building) -> void:
 			for wid in b.worker_ids:
 				var s: Survivor = GameState.roster.get_by_id(wid)
 				if s != null:
-					workers_row.add_child(_make_assigned_worker_sprite(s))
+					workers_row.add_child(UiPresentation.assigned_worker_sprite(s))
 		# Bouton pour ouvrir le popup d'affectation
 		var assign_btn := Button.new()
 		assign_btn.text = tr("BTN_ASSIGN_WORKER")
@@ -296,32 +250,26 @@ func _add_generic_building_slot(b: Building) -> void:
 				for i in amt:
 					var icon := UiPresentation.resource_icon(resource_name, 14)
 					io_row.add_child(icon)
+	return panel
 
-func _find_starter(id: String) -> Building:
-	for b in GameState.buildings:
-		if b.config.id == id:
-			return b
-	return null
-
-func _add_computer_slot(b: Building) -> void:
-	var panel := _new_slot_panel(true)
-	_colony_grid.add_child(panel)
+func _make_computer_slot(b: Building) -> Control:
+	var panel := UiPresentation.slot_panel(true)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
 	panel.add_child(vbox)
-	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	vbox.add_child(UiPresentation.slot_title(tr(b.config.name_key)))
 	var btn := Button.new()
 	btn.text = tr("BTN_COMPUTER_INTERACT")
 	btn.pressed.connect(_on_computer_pressed)
 	vbox.add_child(btn)
+	return panel
 
-func _add_synth_slot(b: Building) -> void:
-	var panel := _new_slot_panel(true)
-	_colony_grid.add_child(panel)
+func _make_synth_slot(b: Building) -> Control:
+	var panel := UiPresentation.slot_panel(true)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
 	panel.add_child(vbox)
-	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	vbox.add_child(UiPresentation.slot_title(tr(b.config.name_key)))
 	var checkbox := CheckBox.new()
 	checkbox.text = tr("LABEL_SYNTH_RUNNING")
 	checkbox.set_pressed_no_signal(b.active)
@@ -337,58 +285,13 @@ func _add_synth_slot(b: Building) -> void:
 	info.add_theme_font_size_override("font_size", 9)
 	info.modulate = Color(0.7, 0.7, 0.7)
 	vbox.add_child(info)
-
-func _add_cryo_slot(_b: Building) -> void:
-	var panel := _new_slot_panel(true)
-	_colony_grid.add_child(panel)
-	var view: CryoView = preload("res://scenes/ui/buildings/cryo_view.tscn").instantiate()
-	panel.add_child(view)
-
-func _new_slot_panel(is_bunker: bool = false) -> PanelContainer:
-	var panel := PanelContainer.new()
-	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	panel.custom_minimum_size = Vector2(140, 100)
-	var style := StyleBoxFlat.new()
-	if is_bunker:
-		style.bg_color = Color("#2a2e3a")  # bleu-gris froid : bunker, technologique
-	else:
-		style.bg_color = Color("#3a322a")  # brun chaud : colonie, terre
-	style.corner_radius_top_left = 4
-	style.corner_radius_top_right = 4
-	style.corner_radius_bottom_left = 4
-	style.corner_radius_bottom_right = 4
-	panel.add_theme_stylebox_override("panel", style)
 	return panel
 
-func _slot_title(text: String) -> Label:
-	var label := Label.new()
-	label.text = text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 13)
-	return label
-
-func _add_empty_slot(slot_idx: int) -> void:
-	var panel := _new_slot_panel(false)
-	panel.modulate = Color(1, 1, 1, 0.3)
-	_colony_grid.add_child(panel)
-	var label := Label.new()
-	if _placement_mode_type_id != "":
-		label.text = tr("LABEL_PLACE_HERE")
-		panel.modulate = Color(0.7, 1.0, 0.7, 0.6)
-		panel.mouse_filter = Control.MOUSE_FILTER_STOP
-		panel.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		var type_id := _placement_mode_type_id
-		panel.gui_input.connect(func(event: InputEvent):
-			if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-				GameState.start_construction(type_id, slot_idx)
-				_placement_mode_type_id = ""
-				_refresh())
-	else:
-		label.text = tr("LABEL_EMPTY_SLOT")
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	panel.add_child(label)
+func _make_cryo_slot(_b: Building) -> Control:
+	var panel := UiPresentation.slot_panel(true)
+	var view: CryoView = preload("res://scenes/ui/buildings/cryo_view.tscn").instantiate()
+	panel.add_child(view)
+	return panel
 
 func _add_label(parent: Node, text: String) -> Label:
 	var label := Label.new()
@@ -653,7 +556,6 @@ func _on_submenu_selected(index: int, sub: PopupMenu) -> void:
 
 func _refresh(_a = null, _b = null, _c = null, _d = null) -> void:
 	_draw_map()
-	_draw_colony()
 
 func _on_run_ended(_cause: GameState.EndCause) -> void:
 	var score = GameState.compute_score()
@@ -713,13 +615,12 @@ func _make_label(text: String) -> Label:
 	label.text = text
 	return label
 
-func _add_construction_zone_slot(b: Building) -> void:
-	var panel := _new_slot_panel(false)
-	_colony_grid.add_child(panel)
+func _make_construction_zone_slot(b: Building) -> Control:
+	var panel := UiPresentation.slot_panel(false)
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 4)
 	panel.add_child(vbox)
-	vbox.add_child(_slot_title(tr(b.config.name_key)))
+	vbox.add_child(UiPresentation.slot_title(tr(b.config.name_key)))
 	# Affichage des colons assignés
 	var workers_row := HBoxContainer.new()
 	workers_row.add_theme_constant_override("separation", 4)
@@ -736,7 +637,7 @@ func _add_construction_zone_slot(b: Building) -> void:
 		for wid in b.worker_ids:
 			var s: Survivor = GameState.roster.get_by_id(wid)
 			if s != null:
-				workers_row.add_child(_make_assigned_worker_sprite(s))
+				workers_row.add_child(UiPresentation.assigned_worker_sprite(s))
 	# Label de la cible courante
 	if b.construction_target != "":
 		var target: Building = GameState._find_building_by_instance(int(b.construction_target))
@@ -792,6 +693,7 @@ func _add_construction_zone_slot(b: Building) -> void:
 	assign_btn.pressed.connect(func():
 		_open_building_popup(b, get_global_mouse_position()))
 	vbox.add_child(assign_btn)
+	return panel
 
 func _on_construction_target_pressed(b: Building) -> void:
 	# On ouvre un popup avec les bâtiments constructibles
@@ -834,22 +736,7 @@ func _on_construction_target_selected(index: int) -> void:
 		return
 	match meta.get("action", ""):
 		"set_target":
-			_placement_mode_type_id = meta["target_id"]
-			_refresh()
-
-func _make_assigned_worker_sprite(s: Survivor) -> Control:
-	var tooltip := "%s\n%s\n\n%s" % [
-		s.name,
-		tr(s.profession),
-		tr("TOOLTIP_CLICK_TO_UNASSIGN"),
-	]
-	var sprite := UiPresentation.survivor_sprite(s, tooltip)
-	sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	var sid := s.id
-	sprite.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			GameState.unassign_from_building(sid))
-	return sprite
+			_colony_view.enter_placement_mode(meta["target_id"])
 
 func _open_building_popup(b: Building, popup_position: Vector2) -> void:
 	if _tile_popup != null:

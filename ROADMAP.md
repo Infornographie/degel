@@ -97,6 +97,7 @@ Refacto de la dette accumulée. Trois sous-phases identifiées, deux faites.
 - **3e — Extraction de SurvivorsView.** Vue transversale liste des éveillés (sprites triés par ordre de réveil + tooltips détaillés). Lecture seule. Aucune nouvelle dépendance, consomme `UiPresentation.survivor_sprite()` et `UiPresentation.activity()` / `tile_label()`. `main_ui.gd` réduit de ~50 lignes.
 - **3f — Extraction de ResourcesBar.** Vue transversale de la barre des stocks (food/wood/ore/tools, scrollable horizontalement). Lecture seule, abonnée à `resources_changed`. `main_ui.gd` réduit de ~33 lignes.
 - **3g — Extraction de ButtonsSection.** Vue transversale des boutons d'action globaux + status label de fin de run. Pattern signal pour le couplage avec MainUi : émet `language_toggled` quand le rebuild complet de l'UI est nécessaire (responsabilité MainUi). `UiPresentation.show_popup()` ajoutée et adoptée par les trois sites (necrology, nightly news, run ended). `main_ui.gd` réduit de ~50 lignes.
+- **3h — Extraction de ColonyView (orchestrateur grid + slots).** Vue transversale de la grille colony 4×3. Layout, slots vides, mode placement, dispatch des starters aux emplacements fixes. Les 5 `_add_*_slot` de MainUi sont refactorées en `_make_*_slot` qui retournent un Control — ColonyView les appelle via Callable. `UiPresentation` augmenté de `slot_panel`, `slot_title`, `assigned_worker_sprite`. `main_ui.gd` réduit de ~150 lignes.
 - **4 — Suppression du legacy Job.** `enum Job`, `var job_outputs` et son init dans `game_state.gd`. Fonctions mortes `_on_tile_popup_selected` et `_aggregate_production` dans `main_ui.gd`. Commentaire obsolète sur `GameState.Job.X` dans `hex_tile.gd`. Confirmé par grep global : zéro référence restante.
 
 Sous-phase 3 (les autres vues : ColonyView, MapView, SurvivorsView, CryoView, InfosSection) reste à faire — pattern validé, reproduction vue par vue.
@@ -201,6 +202,9 @@ Signaux candidats : cohabitation, travail partagé, événements vécus ensemble
 - **Signal nightly_deaths mal nommé** — porte tous les events du tour maintenant, pas seulement les morts. À renommer (turn_news ou nightly_events)
 - **Pas de virtualisation du journal UI** — 1 Label par event. À 1000+ events, à surveiller. Mitigation : "voir les N derniers" + bouton "tout afficher" si besoin
 - **construction_started réutilisé pour rafraîchir l'UI** (deux call sites avec # rafraîchir en commentaire dans game_state.gd) — un vrai signal de refresh manque
+- **Layout colony hardcodé** (`COLONY_SLOTS=12`, `STARTER_SLOTS` dictionnaire d'emplacements) dans `ColonyView`. À déplacer dans une Resource configurable quand l'équilibrage et les nouveaux bâtiments l'exigeront.
+- **`_render_slot_fn: Callable`** est un couplage transitoire ColonyView ↔ MainUi. Disparaîtra en séance 2 (Phase 8.3i) quand chaque slot deviendra sa propre vue dans `res://scenes/ui/buildings/` avec dispatch data-driven via `BuildingConfig.view_scene`.
+- **`BUNKER_BUILDING_IDS`** migré dans ColonyView mais peut-être plus utilisé nulle part. À grep et supprimer si vrai.
 ---
  
 ## 🎯 Indicateurs de santé du projet

@@ -12,6 +12,9 @@ const RESOURCE_SPRITE_SIZE: int = 32
 const OVERLAY_PATH := "res://assets/resources/%s.png"
 const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic%d.png"
 const SURVIVOR_SPRITE_SCALE: int = 4
+const SLOT_BUNKER_COLOR := Color("#2a2e3a")
+const SLOT_COLONY_COLOR := Color("#3a322a")
+const SLOT_MIN_SIZE := Vector2(140, 100)
 
 ## Nom affichable d'une ressource (clé i18n si connue, sinon brut).
 static func resource(resource_name: String) -> String:
@@ -131,3 +134,42 @@ static func show_popup(parent: Node, title: String, message: String) -> void:
 	dialog.popup_centered()
 	dialog.confirmed.connect(dialog.queue_free)
 	dialog.canceled.connect(dialog.queue_free)
+
+## Helpers pour les slots de la grille colony. Style "bunker" (bleu-gris froid)
+## ou "colonie" (brun chaud) selon le bâtiment.
+
+static func slot_panel(is_bunker: bool = false) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	panel.custom_minimum_size = SLOT_MIN_SIZE
+	var style := StyleBoxFlat.new()
+	style.bg_color = SLOT_BUNKER_COLOR if is_bunker else SLOT_COLONY_COLOR
+	style.corner_radius_top_left = 4
+	style.corner_radius_top_right = 4
+	style.corner_radius_bottom_left = 4
+	style.corner_radius_bottom_right = 4
+	panel.add_theme_stylebox_override("panel", style)
+	return panel
+
+static func slot_title(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 13)
+	return label
+
+## Sprite d'un survivant assigné à un bâtiment, cliquable pour le désassigner.
+static func assigned_worker_sprite(s: Survivor) -> Control:
+	var tooltip := "%s\n%s\n\n%s" % [
+		s.name,
+		TranslationServer.translate(s.profession),
+		TranslationServer.translate("TOOLTIP_CLICK_TO_UNASSIGN"),
+	]
+	var sprite := survivor_sprite(s, tooltip)
+	sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var sid := s.id
+	sprite.gui_input.connect(func(event: InputEvent):
+		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+			GameState.unassign_from_building(sid))
+	return sprite
