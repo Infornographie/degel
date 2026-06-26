@@ -18,4 +18,4 @@ func _init(p_id: int, p_name: String, p_profession: String) -> void:
 	id = p_id
 	name = p_name
 	profession = p_profession
-	sprite_variant = randi() % 6 # indiquer le nombre de variantes
+	sprite_variant = randi() % 10 # indiquer le nombre de variantes
