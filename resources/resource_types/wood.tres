@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ResourceType" format=3 uid="uid://d3c4fkjgm6fct"]
+
+[ext_resource type="Script" uid="uid://beej3fkkc3hb3" path="res://systems/world/resource_type.gd" id="1_sk704"]
+[ext_resource type="Texture2D" uid="uid://tbx50s52uwow" path="res://assets/resources/wood.png" id="1_vgyw2"]
+
+[resource]
+script = ExtResource("1_sk704")
+id = &"wood"
+name_key = "RES_WOOD"
+icon = ExtResource("1_vgyw2")
+display_order = 20
+metadata/_custom_type_script = "uid://beej3fkkc3hb3"
