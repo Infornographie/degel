@@ -1,12 +1,22 @@
 extends Control
-## UI placeholder — 4c. Carte interactive, jobs territorialisés.
-
-
-var _colony_view: ColonyView
-
+## MainUi — coordinateur léger de l'interface du jeu.
+##
+## Responsabilités :
+## - Layout d'ensemble (3 rangs : haut / milieu / bas)
+## - Instanciation des vues (toutes dans res://scenes/ui/)
+## - Rebuild complet au changement de langue (ButtonsSection émet
+##   language_toggled, MainUi reconstruit tout — tr() est résolu à la création
+##   des Labels, pas re-évalué dynamiquement)
+## - Popups globaux non liés à une vue spécifique : nightly news en fin de
+##   tour et score de fin de run
+##
+## Toutes les vues s'abonnent directement à GameState pour leurs refreshs.
+## MainUi n'a aucune logique de simulation ni de rendu.
 
 func _ready() -> void:
 	_build_ui()
+	GameState.run_ended.connect(_on_run_ended)
+	GameState.nightly_deaths.connect(_on_nightly_deaths)
 	# On cache l'UI le temps que le layout se calcule
 	modulate.a = 0.0
 	await get_tree().process_frame
@@ -19,7 +29,7 @@ func _build_ui() -> void:
 	main_vbox.add_theme_constant_override("separation", 8)
 	add_child(main_vbox)
 
-	# Rang du haut : settlement à gauche, map+prod à droite
+	# ─── Rang du haut : settlement à gauche, map + production à droite ───
 	var top_row := HBoxContainer.new()
 	top_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -27,16 +37,18 @@ func _build_ui() -> void:
 	top_row.add_theme_constant_override("separation", 12)
 	main_vbox.add_child(top_row)
 
+	# Settlement : grille colony des bâtiments
 	var settlement_panel := VBoxContainer.new()
 	settlement_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	settlement_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	settlement_panel.size_flags_stretch_ratio = 0.65
 	top_row.add_child(settlement_panel)
-	_colony_view = preload("res://scenes/ui/colony_view.tscn").instantiate()
-	_colony_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_colony_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	settlement_panel.add_child(_colony_view)
+	var colony_view: ColonyView = preload("res://scenes/ui/colony_view.tscn").instantiate()
+	colony_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	colony_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	settlement_panel.add_child(colony_view)
 
+	# Colonne droite : map en haut, production en bas
 	var right_column := VBoxContainer.new()
 	right_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -60,7 +72,7 @@ func _build_ui() -> void:
 	production_view.size_flags_stretch_ratio = 0.45
 	right_column.add_child(production_view)
 
-	# Rang du milieu : infos + awakened + buttons
+	# ─── Rang du milieu : infos | survivants éveillés | boutons ───
 	var middle_row := HBoxContainer.new()
 	middle_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	middle_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -68,13 +80,14 @@ func _build_ui() -> void:
 	middle_row.add_theme_constant_override("separation", 16)
 	main_vbox.add_child(middle_row)
 
+	# Infos (tour, élec, famine, journal d'événements)
 	var infos_section: InfosSection = preload("res://scenes/ui/infos_section.tscn").instantiate()
 	infos_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	infos_section.size_flags_stretch_ratio = 0.20
 	infos_section.clip_contents = true
 	middle_row.add_child(infos_section)
 
-	# Awakened : scrollable et clippé pour ne pas pousser les autres
+	# Liste des éveillés : scrollable et clippée pour ne pas pousser les autres
 	var awake_scroll := ScrollContainer.new()
 	awake_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	awake_scroll.size_flags_stretch_ratio = 0.55
@@ -86,6 +99,7 @@ func _build_ui() -> void:
 	var survivors_view: SurvivorsView = preload("res://scenes/ui/survivors_view.tscn").instantiate()
 	awake_panel.add_child(survivors_view)
 
+	# Boutons d'action globaux
 	var buttons_panel := VBoxContainer.new()
 	buttons_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buttons_panel.size_flags_stretch_ratio = 0.25
@@ -96,7 +110,7 @@ func _build_ui() -> void:
 	buttons_section.language_toggled.connect(_rebuild_ui)
 	buttons_panel.add_child(buttons_section)
 
-	# Rang du bas : resources bar
+	# ─── Rang du bas : barre des stocks ───
 	var resources_row := HBoxContainer.new()
 	resources_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	resources_row.custom_minimum_size = Vector2(0, 50)
@@ -106,6 +120,9 @@ func _build_ui() -> void:
 	resources_bar.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	resources_row.add_child(resources_bar)
 
+## Détruit tout et reconstruit. Appelée par ButtonsSection au changement de
+## langue (mécanisme brut : tr() est résolu à la création des Labels, donc
+## il faut tout reconstruire pour que la nouvelle langue prenne).
 func _rebuild_ui() -> void:
 	for child in get_children():
 		child.queue_free()
@@ -113,6 +130,8 @@ func _rebuild_ui() -> void:
 	_build_ui()
 	await get_tree().process_frame
 	modulate.a = 1.0
+
+# ── Popups globaux ──
 
 func _on_run_ended(_cause: GameState.EndCause) -> void:
 	var score = GameState.compute_score()
