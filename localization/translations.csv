@@ -51,10 +51,10 @@ TILE_TYPE_PLAINS,Plaine,Plains
 TILE_TYPE_FOREST,Forêt,Forest
 TILE_TYPE_MOUNTAIN,Montagne,Mountain
 SEARCH_FAILED,  Aucun(e) %s en cryo. Énergie perdue.,  No %s found in cryo. Reserve spent.
-RESOURCE_FOOD,Nourriture,Food
-RESOURCE_WOOD,Bois,Wood
-RESOURCE_ORE,Minerai,Ore
-RESOURCE_ELECTRICITY,Électricité,Electricity
+RES_FOOD,Nourriture,Food
+RES_WOOD,Bois,Wood
+RES_ORE,Minerai,Ore
+RES_ELECTRICITY,Électricité,Electricity
 PROF_CEO,PDG,CEO
 PROF_TRADER,Trader,Trader
 PROF_GAME_DESIGNER,Game designer,Game designer
@@ -87,7 +87,7 @@ POPUP_COMPUTER_TITLE,Ordinateur central,Central Computer
 BTN_WAKE_SHORT,Réveiller,Wake
 LABEL_STILL_IN_CRYO,File de rêveil : %d,Awakening pool: %d
 LABEL_PRODUCTION_TITLE,Production,Production
-RESOURCE_HEAT,Chaleur,Heat
+RES_HEAT,Chaleur,Heat
 BUILDING_CONSTRUCTION_ZONE,Zone de construction,Construction Zone
 BUILDING_CAMPFIRE,Feu de camp,Campfire
 LABEL_ASSIGN_WORKER,Affecter un travailleur,Assign a worker
@@ -105,7 +105,7 @@ LABEL_UNDER_CONSTRUCTION,en construction,under construction
 LABEL_OPERATIONAL,opérationnel,operational
 BTN_CHOOSE_TARGET,Choisir une cible,Choose target
 BTN_ASSIGN_WORKER,Affecter,Assign
-RESOURCE_TOOLS,Outils,Tools
+RES_TOOLS,Outils,Tools
 BUILDING_TOOL_WORKSHOP,Atelier d'outils,Tool Workshop
 TILE_TYPE_SETTLEMENT,Colonie,Settlement
 ROLE_IDLE,Inactif,Idle

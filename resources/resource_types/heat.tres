@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResourceType" format=3 uid="uid://csexxplmjymi6"]
+
+[ext_resource type="Script" uid="uid://beej3fkkc3hb3" path="res://systems/world/resource_type.gd" id="1_eip3t"]
+[ext_resource type="Texture2D" uid="uid://c1x0qnf5vng0p" path="res://assets/resources/heat.png" id="1_v63d2"]
+
+[resource]
+script = ExtResource("1_eip3t")
+id = &"heat"
+name_key = "RES_HEAT"
+icon = ExtResource("1_v63d2")
+stackable = false
+display_order = 60
+metadata/_custom_type_script = "uid://beej3fkkc3hb3"

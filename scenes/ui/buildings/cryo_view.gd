@@ -15,6 +15,13 @@ const CANDIDATE_SPRITE_ROTATION_DEG: float = -75.0
 var _sprites_row: HBoxContainer
 var _count_label: Label
 
+var _building: Building
+
+func setup(b: Building) -> void:
+	_building = b
+	# Pas d'usage spécifique du building pour l'instant (CryoView lit GameState
+	# pour le pool de candidats), mais on stocke pour cohérence future.
+
 func _ready() -> void:
 	_build()
 	GameState.candidates_changed.connect(_rebuild)

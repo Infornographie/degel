@@ -1,17 +1,19 @@
 [gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://bxc0wofwp0arm"]
 
 [ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_1jcwd"]
+[ext_resource type="PackedScene" path="res://scenes/ui/buildings/synthesizer_view.tscn" id="2_rhomy"]
 
 [resource]
 script = ExtResource("1_1jcwd")
 id = "synthesizer"
 name_key = "BUILDING_SYNTHESIZER"
 is_starter = true
-outputs = {
+outputs = Dictionary[String, float]({
 "food": 1.0
-}
+})
 workers_required = 0
 workers_max = 0
 can_run_on_electricity = true
 electricity_cost = 3.0
+view_scene = ExtResource("2_rhomy")
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

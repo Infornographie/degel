@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="ResourceType" format=3 uid="uid://dxiidqgxmm6xp"]
+
+[ext_resource type="Script" uid="uid://beej3fkkc3hb3" path="res://systems/world/resource_type.gd" id="1_0qqcb"]
+[ext_resource type="Texture2D" uid="uid://33hra43a7pry" path="res://assets/resources/electricity.png" id="1_lbtpp"]
+
+[resource]
+script = ExtResource("1_0qqcb")
+id = &"electricity"
+name_key = "RES_ELECTRICITY"
+icon = ExtResource("1_lbtpp")
+stackable = false
+display_order = 50
+metadata/_custom_type_script = "uid://beej3fkkc3hb3"
