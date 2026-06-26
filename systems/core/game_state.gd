@@ -100,6 +100,7 @@ func _ready() -> void:
 		"wood": 0.0,
 		"ore": 0.0,
 		"tools": 0.0,
+		"meal":0.0,
 		"electricity": 0.0,
 		"heat": 0.0,
 	}
@@ -267,11 +268,17 @@ func advance_turn() -> void:
 	# 1) Résolution déterministe + aléatoire (production, construction, bâtiments, mutations)
 	turn_resolver.execute_turn()
 
-	# 2) Repas + famine
-	var needed: float = awake_count() * config.food_per_survivor
+	# 2) Repas + famine.
+	#    Les meals sont consommés en priorité (1 meal = 1 survivant nourri),
+	#    la food brute couvre le reste à raison de food_per_survivor par tête.
+	var awake: int = awake_count()
+	var meals_available: float = resources.get("meal", 0.0)
+	var meals_consumed: float = min(meals_available, float(awake))
+	resources["meal"] = meals_available - meals_consumed
+	var food_needed: float = (float(awake) - meals_consumed) * config.food_per_survivor
 	var was_in_famine := famine_turns > 0
-	if resources["food"] >= needed:
-		resources["food"] -= needed
+	if resources["food"] >= food_needed:
+		resources["food"] -= food_needed
 		if was_in_famine:
 			famine_turns = 0
 			_deaths_triggered = false

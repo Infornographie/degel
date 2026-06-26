@@ -1,11 +1,9 @@
 extends Control
 class_name ResourcesBar
-## Barre des stocks de ressources en bas d'écran : food / wood / ore / tools.
+## Barre des stocks de ressources en bas d'écran.
+## Itère le ResourceRegistry et filtre les ressources stockables —
+## l'électricité et la heat (flux par tour) vivent dans InfosSection.
 ## Scrollable horizontalement pour accueillir d'autres ressources plus tard.
-## Lecture seule. Affiche les ressources stockables uniquement — l'électricité
-## et la heat (flux par tour, pas stocks) vivent dans InfosSection.
-
-const RESOURCE_ORDER: Array[String] = ["food", "wood", "ore", "tools"]
 
 var _bar: HBoxContainer
 
@@ -31,16 +29,17 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 		return
 	for child in _bar.get_children():
 		child.queue_free()
-	for resource_name in RESOURCE_ORDER:
-		_bar.add_child(_make_pill(resource_name))
+	for type in ResourceRegistry.all():
+		if not type.stackable:
+			continue
+		_bar.add_child(_make_pill(type))
 
-func _make_pill(resource_name: String) -> HBoxContainer:
+func _make_pill(type: ResourceType) -> HBoxContainer:
 	var pill := HBoxContainer.new()
 	pill.add_theme_constant_override("separation", 6)
-	pill.tooltip_text = UiPresentation.resource(resource_name)
-	pill.add_child(UiPresentation.resource_icon(resource_name, UiPresentation.RESOURCE_SPRITE_SIZE))
-	# Valeur
-	var value: float = GameState.resources.get(resource_name, 0.0)
+	pill.tooltip_text = TranslationServer.translate(type.name_key)
+	pill.add_child(UiPresentation.resource_icon(type.id, UiPresentation.RESOURCE_SPRITE_SIZE))
+	var value: float = GameState.resources.get(type.id, 0.0)
 	var label := Label.new()
 	label.text = "%.0f" % value
 	label.add_theme_font_size_override("font_size", 16)

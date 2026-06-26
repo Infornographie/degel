@@ -7,7 +7,6 @@ class_name UiPresentation
 ## Note : on utilise TranslationServer.translate() au lieu de tr() parce que
 ## tr() est une méthode de Object, inaccessible depuis static func.
 
-const RESOURCE_SPRITE_PATH := "res://assets/resources/%s.png"
 const RESOURCE_SPRITE_SIZE: int = 32
 const OVERLAY_PATH := "res://assets/resources/%s.png"
 const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic%d.png"
@@ -16,13 +15,12 @@ const SLOT_BUNKER_COLOR := Color("#2a2e3a")
 const SLOT_COLONY_COLOR := Color("#3a322a")
 const SLOT_MIN_SIZE := Vector2(140, 100)
 
-## Nom affichable d'une ressource (clé i18n si connue, sinon brut).
+## Nom affichable d'une ressource (via le registry, fallback brut).
 static func resource(resource_name: String) -> String:
-	match resource_name:
-		"food": return TranslationServer.translate("RESOURCE_FOOD")
-		"wood": return TranslationServer.translate("RESOURCE_WOOD")
-		"ore": return TranslationServer.translate("RESOURCE_ORE")
-		_: return resource_name
+	var type: ResourceType = ResourceRegistry.get_type(resource_name)
+	if type != null:
+		return TranslationServer.translate(type.name_key)
+	return resource_name
 
 ## Couleur de fond utilisée quand le sprite d'une ressource n'est pas chargé.
 static func placeholder_color(resource_name: String) -> Color:
@@ -64,13 +62,13 @@ static func activity(s: Survivor) -> String:
 			return TranslationServer.translate(act.name_key)
 	return TranslationServer.translate("ROLE_IDLE")
 
-## Icône d'une ressource (sprite si dispo, sinon ColorRect placeholder).
+## Icône d'une ressource (depuis le registry, fallback ColorRect si pas d'icône).
 ## Taille paramétrable pour permettre les usages variés (barres, lignes de prod, etc).
 static func resource_icon(resource_name: String, icon_size: int) -> Control:
-	var sprite_path := RESOURCE_SPRITE_PATH % resource_name
-	if ResourceLoader.exists(sprite_path):
+	var type: ResourceType = ResourceRegistry.get_type(resource_name)
+	if type != null and type.icon != null:
 		var icon := TextureRect.new()
-		icon.texture = load(sprite_path)
+		icon.texture = type.icon
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.custom_minimum_size = Vector2(icon_size, icon_size)
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

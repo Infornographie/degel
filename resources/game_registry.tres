@@ -1,0 +1,35 @@
+[gd_resource type="Resource" script_class="GameRegistry" format=3 uid="uid://gov7u135qre1"]
+
+[ext_resource type="Script" uid="uid://pi3ffe2cp0cn" path="res://systems/world/activity.gd" id="1_gxpwg"]
+[ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="2_jwylt"]
+[ext_resource type="Resource" uid="uid://d0n16pjkkameu" path="res://resources/activities/forester.tres" id="2_sykcg"]
+[ext_resource type="Script" uid="uid://beej3fkkc3hb3" path="res://systems/world/resource_type.gd" id="3_a3kea"]
+[ext_resource type="Resource" uid="uid://bs68an4h3uwmq" path="res://resources/activities/gardener.tres" id="3_pc038"]
+[ext_resource type="Resource" uid="uid://bdhecvob4lml4" path="res://resources/activities/gathering.tres" id="4_fxixp"]
+[ext_resource type="Script" uid="uid://d0u3uo5c4283h" path="res://systems/core/game_registry.gd" id="4_oywpa"]
+[ext_resource type="Resource" uid="uid://c2mlfogsn1bvh" path="res://resources/activities/hunting.tres" id="5_3k771"]
+[ext_resource type="Resource" uid="uid://cplhsixndbk7c" path="res://resources/activities/lumberjack.tres" id="6_pg00w"]
+[ext_resource type="Resource" uid="uid://dy7lu27u1ofao" path="res://resources/activities/ore_picker.tres" id="7_5hq8r"]
+[ext_resource type="Resource" uid="uid://bjpsj6lpi5344" path="res://resources/activities/wood_picker.tres" id="8_7lhkg"]
+[ext_resource type="Resource" uid="uid://ds1gldxw4baqb" path="res://resources/buildings/campfire.tres" id="10_ngl8f"]
+[ext_resource type="Resource" uid="uid://db58ionthlj13" path="res://resources/buildings/canteen.tres" id="11_0nps4"]
+[ext_resource type="Resource" uid="uid://ijok7a07khuv" path="res://resources/buildings/computer.tres" id="12_3b6yo"]
+[ext_resource type="Resource" uid="uid://cp7bsn26hvug6" path="res://resources/buildings/construction_zone.tres" id="13_73pde"]
+[ext_resource type="Resource" uid="uid://djmis3x2qvsx1" path="res://resources/buildings/cryo_room.tres" id="14_8uwp2"]
+[ext_resource type="Resource" uid="uid://bxc0wofwp0arm" path="res://resources/buildings/synthesizer.tres" id="15_rhqw5"]
+[ext_resource type="Resource" uid="uid://dxrx47erw4dow" path="res://resources/buildings/tool_workshop.tres" id="16_ahqt4"]
+[ext_resource type="Resource" uid="uid://b2doie6qgpo8r" path="res://resources/buildings/test.tres" id="17_pc038"]
+[ext_resource type="Resource" uid="uid://dxiidqgxmm6xp" path="res://resources/resource_types/electricity.tres" id="18_vsdh7"]
+[ext_resource type="Resource" uid="uid://bjs50cnrlsuvp" path="res://resources/resource_types/food.tres" id="19_1mqvl"]
+[ext_resource type="Resource" uid="uid://csexxplmjymi6" path="res://resources/resource_types/heat.tres" id="20_j2jih"]
+[ext_resource type="Resource" uid="uid://cdorrauh1mlfu" path="res://resources/resource_types/meal.tres" id="21_lwhww"]
+[ext_resource type="Resource" uid="uid://dhxw8uqtrag2p" path="res://resources/resource_types/ore.tres" id="22_jfeb4"]
+[ext_resource type="Resource" uid="uid://dd44j56cvelly" path="res://resources/resource_types/tools.tres" id="23_1ppsf"]
+[ext_resource type="Resource" uid="uid://d3c4fkjgm6fct" path="res://resources/resource_types/wood.tres" id="24_iis01"]
+
+[resource]
+script = ExtResource("4_oywpa")
+resource_types = Array[ExtResource("3_a3kea")]([ExtResource("18_vsdh7"), ExtResource("19_1mqvl"), ExtResource("20_j2jih"), ExtResource("21_lwhww"), ExtResource("22_jfeb4"), ExtResource("23_1ppsf"), ExtResource("24_iis01")])
+buildings = Array[ExtResource("2_jwylt")]([ExtResource("10_ngl8f"), ExtResource("11_0nps4"), ExtResource("12_3b6yo"), ExtResource("13_73pde"), ExtResource("14_8uwp2"), ExtResource("15_rhqw5"), ExtResource("16_ahqt4"), ExtResource("17_pc038")])
+activities = Array[ExtResource("1_gxpwg")]([ExtResource("2_sykcg"), ExtResource("3_pc038"), ExtResource("4_fxixp"), ExtResource("5_3k771"), ExtResource("6_pg00w"), ExtResource("7_5hq8r"), ExtResource("8_7lhkg")])
+metadata/_custom_type_script = "uid://d0u3uo5c4283h"

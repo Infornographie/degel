@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://b2doie6qgpo8r"]
+
+[ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_nj06f"]
+[ext_resource type="PackedScene" path="res://scenes/ui/buildings/generic_building_view.tscn" id="2_aiq2j"]
+
+[resource]
+script = ExtResource("1_nj06f")
+id = "test"
+name_key = "test"
+description_key = "test"
+build_order = Array[String](["food"])
+inputs = Dictionary[String, float]({
+"food": 1.0
+})
+outputs = Dictionary[String, float]({
+"meal": 10.0
+})
+view_scene = ExtResource("2_aiq2j")
+metadata/_custom_type_script = "uid://djgwy70yusm4w"

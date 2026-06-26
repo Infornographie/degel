@@ -152,3 +152,6 @@ EVENT_HUNT_NO_INPUTS,%s (%s) manque d'outils pour chasser.,%s (%s) lacks tools f
 EVENT_FOREST_DEPLETED,Une forêt est devenue plaine.,A forest has become plain.
 LABEL_EVENT_LOG_TITLE,Journal,Journal
 LABEL_EVENT_TURN_PREFIX,[T%d],[T%d]
+RES_MEAL,Repas,Meal
+BUILDING_CANTEEN,Cantine,Canteen
+BUILDING_CANTEEN_DESC,Permet aux survivants de préparer des repas.,Allows survivors to prepare meals.

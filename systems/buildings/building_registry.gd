@@ -1,15 +1,6 @@
 extends RefCounted
 class_name BuildingRegistry
-
-const CONFIGS_PATH := "res://resources/buildings/"
-const BUILDING_FILES := [
-	"computer.tres",
-	"cryo_room.tres",
-	"synthesizer.tres",
-	"construction_zone.tres",
-	"campfire.tres",
-	"tool_workshop.tres",
-]
+## Registry des BuildingConfig. Charge depuis le manifest central GameRegistry.
 
 var configs: Dictionary = {}
 
@@ -17,12 +8,11 @@ func _init() -> void:
 	_load_all()
 
 func _load_all() -> void:
-	for file_name in BUILDING_FILES:
-		var path: String = CONFIGS_PATH + file_name
-		if not ResourceLoader.exists(path):
-			push_warning("BuildingRegistry: %s introuvable" % path)
-			continue
-		var config: BuildingConfig = load(path) as BuildingConfig
+	var manifest: GameRegistry = GameRegistry.load_default()
+	if manifest == null:
+		push_error("BuildingRegistry: game_registry.tres introuvable")
+		return
+	for config in manifest.buildings:
 		if config != null and config.id != "":
 			configs[config.id] = config
 

@@ -104,8 +104,17 @@ func compute_flow() -> Dictionary:
 	# 5) Réacteur : production d'électricité (flux pur, pas de multiplicateur famine)
 	_add(production, "electricity", gs.reactor_output)
 
-	# 6) Consommation : repas des colons
-	_add(consumption, "food", gs.awake_count() * gs.config.food_per_survivor)
+	# 6) Consommation : repas des colons.
+	#    Les meals sont consommés en priorité (1 meal = 1 survivant nourri),
+	#    la food brute couvre le reste à raison de food_per_survivor par tête.
+	var awake_count: int = gs.awake_count()
+	var meals_available: float = stock.get("meal", 0.0)
+	var meals_consumed: float = min(meals_available, float(awake_count))
+	if meals_consumed > 0.0:
+		_add(consumption, "meal", meals_consumed)
+		stock["meal"] = meals_available - meals_consumed
+	var food_needed: float = (float(awake_count) - meals_consumed) * gs.config.food_per_survivor
+	_add(consumption, "food", food_needed)
 
 	# 7) Consommation : électricité déjà dépensée ce tour (réveils)
 	_add(consumption, "electricity", gs.electricity_consumed_this_turn())

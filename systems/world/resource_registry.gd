@@ -1,16 +1,6 @@
 extends RefCounted
 class_name ResourceRegistry
-## Registry des ResourceType, chargés depuis une liste explicite.
-## Pattern aligné sur ActivityRegistry / BuildingRegistry (build Windows : pas de DirAccess).
-
-const PATHS: Array[String] = [
-	"res://resources/resource_types/food.tres",
-	"res://resources/resource_types/wood.tres",
-	"res://resources/resource_types/ore.tres",
-	"res://resources/resource_types/tools.tres",
-	"res://resources/resource_types/electricity.tres",
-	"res://resources/resource_types/heat.tres",
-]
+## Registry des ResourceType. Charge depuis le manifest central GameRegistry.
 
 static var _by_id: Dictionary = {}
 static var _all_sorted: Array[ResourceType] = []
@@ -20,10 +10,12 @@ static func _ensure_loaded() -> void:
 	if _loaded:
 		return
 	_loaded = true
-	for path in PATHS:
-		var res: ResourceType = load(path) as ResourceType
-		if res == null:
-			push_error("ResourceRegistry: impossible de charger %s" % path)
+	var manifest: GameRegistry = GameRegistry.load_default()
+	if manifest == null:
+		push_error("ResourceRegistry: game_registry.tres introuvable")
+		return
+	for res in manifest.resource_types:
+		if res == null or res.id == StringName(""):
 			continue
 		_by_id[res.id] = res
 	var sorted: Array[ResourceType] = []

@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="ResourceType" format=3 uid="uid://cdorrauh1mlfu"]
+
+[ext_resource type="Script" uid="uid://beej3fkkc3hb3" path="res://systems/world/resource_type.gd" id="1_r4sv3"]
+[ext_resource type="Texture2D" uid="uid://dc1dvrtsfj8ub" path="res://assets/resources/meal.png" id="1_xvx4e"]
+
+[resource]
+script = ExtResource("1_r4sv3")
+id = &"meal"
+name_key = "RES_MEAL"
+icon = ExtResource("1_xvx4e")
+display_order = 15
+metadata/_custom_type_script = "uid://beej3fkkc3hb3"

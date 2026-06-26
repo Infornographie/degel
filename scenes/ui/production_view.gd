@@ -5,8 +5,6 @@ class_name ProductionView
 ## déterministe via TurnResolver.compute_flow, se reconstruit sur les signals
 ## qui peuvent l'affecter.
 
-const PRODUCTION_ORDER: Array[String] = ["food", "wood", "ore", "tools", "electricity", "heat"]
-const NON_STORABLE_RESOURCES: Array[String] = ["electricity", "heat"]
 const COLUMN_GAP: int = 20
 
 var _section: VBoxContainer
@@ -49,7 +47,8 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 		child.queue_free()
 	_section.add_child(_make_header())
 	var flow: Dictionary = GameState.turn_resolver.compute_flow()
-	for resource_name in PRODUCTION_ORDER:
+	for type in ResourceRegistry.all():
+		var resource_name := String(type.id)
 		if not flow.has(resource_name):
 			continue
 		var f: Dictionary = flow[resource_name]
@@ -58,7 +57,7 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 		var impossible: float = f["impossible"]
 		if production == 0.0 and consumption == 0.0 and impossible == 0.0:
 			continue
-		_section.add_child(_make_row(resource_name, production, consumption, impossible))
+		_section.add_child(_make_row(type, production, consumption, impossible))
 	# Activités risquées
 	var risky: Array = GameState.turn_resolver.gather_risky()
 	if not risky.is_empty():
@@ -109,7 +108,8 @@ func _make_risky_row(row: Dictionary) -> HBoxContainer:
 		icons.add_child(UiPresentation.resource_icon(activity.produced_resource, UiPresentation.RESOURCE_SPRITE_SIZE))
 	return container
 
-func _make_row(resource_name: String, production: float, consumption: float, impossible: float) -> HBoxContainer:
+func _make_row(type: ResourceType, production: float, consumption: float, impossible: float) -> HBoxContainer:
+	var resource_name := String(type.id)
 	var row := HBoxContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_theme_constant_override("separation", COLUMN_GAP)
@@ -133,13 +133,13 @@ func _make_row(resource_name: String, production: float, consumption: float, imp
 	# Colonne 3 : surplus OU déficit (stock)
 	if surplus > 0:
 		row.add_child(_make_icon_column(resource_name, surplus, "surplus"))
-	elif deficit > 0 and not (resource_name in NON_STORABLE_RESOURCES):
+	elif deficit > 0 and type.stackable:
 		row.add_child(_make_icon_column(resource_name, deficit, "deficit"))
 	else:
 		row.add_child(_make_empty_column())
 	# Colonne 4 : impossible (faute d'inputs) + déficit non-stockable
 	var total_impossible: int = imp_int
-	if deficit > 0 and resource_name in NON_STORABLE_RESOURCES:
+	if deficit > 0 and not type.stackable:
 		total_impossible += deficit
 	if total_impossible > 0:
 		row.add_child(_make_icon_column(resource_name, total_impossible, "crossed"))

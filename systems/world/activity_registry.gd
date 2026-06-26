@@ -1,17 +1,6 @@
 extends RefCounted
 class_name ActivityRegistry
-## Charge et expose les activités du jeu.
-
-const CONFIGS_PATH := "res://resources/activities/"
-const ACTIVITY_FILES := [
-	"gathering.tres",
-	"hunting.tres",
-	"wood_picker.tres",
-	"lumberjack.tres",
-	"forester.tres",
-	"gardener.tres",
-	"ore_picker.tres",
-]
+## Registry des Activity. Charge depuis le manifest central GameRegistry.
 
 var activities: Dictionary = {}
 
@@ -19,12 +8,11 @@ func _init() -> void:
 	_load_all()
 
 func _load_all() -> void:
-	for file_name in ACTIVITY_FILES:
-		var path: String = CONFIGS_PATH + file_name
-		if not ResourceLoader.exists(path):
-			push_warning("ActivityRegistry: %s introuvable" % path)
-			continue
-		var activity: Activity = load(path) as Activity
+	var manifest: GameRegistry = GameRegistry.load_default()
+	if manifest == null:
+		push_error("ActivityRegistry: game_registry.tres introuvable")
+		return
+	for activity in manifest.activities:
 		if activity != null and activity.id != "":
 			activities[activity.id] = activity
 

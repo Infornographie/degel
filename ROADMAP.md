@@ -87,14 +87,15 @@ Deux mécaniques actuelles le portent déjà :
 
 ## 🛠 Backlog prioritisé
 
-### Prochaine étape stratégique — Tout data-driven
+### Data-driven : où on en est
 
-Permettre d'ajouter ressources, recettes et bâtiments **sans toucher au code**. Le terrain est prêt côté UI (vues dispatchées via `BuildingConfig.view_scene`). Reste à :
+Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désormais **sans toucher au code** : on crée un `.tres` et on le glisse dans `res://resources/game_registry.tres` via l'inspecteur. Les trois registries (`ResourceRegistry`, `BuildingRegistry`, `ActivityRegistry`) lisent ce manifest central au démarrage et exposent leur API habituelle.
 
-- Modéliser les **ressources** en Resources (`.tres`) chargées dynamiquement, plutôt que des strings hardcodées
-- **Recettes** d'activité et de bâtiment éditables via `.tres`
+- ✅ `ResourceType` + `ResourceRegistry` (champs : `id`, `name_key`, `icon`, `stackable`, `max_stock`, `display_order`)
+- ✅ Manifest central `GameRegistry` regroupant ressources, bâtiments, activités
+- ✅ Recettes d'activité et de bâtiment éditables via `.tres` (déjà le cas, mais maintenant déclarées via le manifest)
 - Migrer `BUNKER_BUILDING_IDS` (hardcodé dans ColonyView) vers un flag `is_bunker_building: bool` dans `BuildingConfig`
-- Cadrage de design à faire avant code : où vivent les Resources, comment elles sont enregistrées, comment les références (par id) sont résolues
+- `GameState.resources` reste indexé par string (le `ResourceType` est une fiche descriptive accessible via le registry — pas d'indirection par objet, par anti-scope)
 
 ### Mécaniques de gestion à ajouter
 
@@ -169,7 +170,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **`GameState.set_synth`** potentiellement morte (à grep). Cleanup côté simulation si confirmé.
 - **Layout colony hardcodé** (`COLONY_SLOTS=12`, `STARTER_SLOTS`) dans `ColonyView`. À déplacer dans une Resource configurable quand l'équilibrage l'exigera.
 - **Ordre des bâtiments dans `_resolve_buildings_operation`** : premier servi sur les inputs partagés. Acceptable, à raffiner si gênant.
-
+- **UI/loc encore branchées sur strings hardcodées — migration en cours.** `GameState.resources["food"]` reste la clé d'accès (par design). Côté affichage : `UiPresentation.resource()`, `UiPresentation.resource_icon()`, `ResourcesBar` et `ProductionView` migrés sur `ResourceRegistry`. Restent à migrer au fil des touches : `InfosSection` (affichage électricité/heat) et autres callsites qui hardcodent encore des noms de ressources.
 ---
 
 ## 🧹 Dettes mineures
@@ -206,7 +207,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
   - `res://systems/world/` : hex_map, hex_tile, production_system, activity, activity_registry
   - `res://systems/survivors/` : roster, survivor
   - `res://systems/buildings/` : building, building_config, building_registry
-  - `res://resources/` : tres de config (game, tile, activities/, buildings/)
+- `res://resources/` : tres de config (game, tile, activities/, buildings/, resource_types/) + `game_registry.tres` (manifest central de tout le contenu data-driven)
   - `res://assets/` : sprites colons (generic0-5), icônes ressources
   - `res://localization/` : CSV FR/EN
   - `res://scenes/` : main_ui (coordinateur léger, ~140 lignes)
