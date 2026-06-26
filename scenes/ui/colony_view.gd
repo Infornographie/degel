@@ -12,7 +12,6 @@ class_name ColonyView
 ## hardcodés ici. À terme, déplacer dans une Resource configurable (dette).
 
 const COLONY_SLOTS: int = 12
-const BUNKER_BUILDING_IDS: Array[String] = ["computer", "cryo_room", "synthesizer"]
 
 # Emplacements fixes des starters dans la grille (4 colonnes × 3 lignes)
 const STARTER_SLOTS := {
@@ -96,7 +95,7 @@ func _find_starter(id: String) -> Building:
 ## Wrap la vue spécifique du bâtiment dans un panel slot stylé.
 ## Si la vue émet placement_mode_requested, on s'y abonne.
 func _make_building_slot(b: Building) -> PanelContainer:
-	var is_bunker := b.config.id in BUNKER_BUILDING_IDS
+	var is_bunker := b.config.is_bunker_building
 	var panel := UiPresentation.slot_panel(is_bunker)
 	if b.config.view_scene == null:
 		push_warning("No view_scene for building %s" % b.config.id)

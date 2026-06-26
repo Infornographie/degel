@@ -94,7 +94,7 @@ Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désorma
 - ✅ `ResourceType` + `ResourceRegistry` (champs : `id`, `name_key`, `icon`, `stackable`, `max_stock`, `display_order`)
 - ✅ Manifest central `GameRegistry` regroupant ressources, bâtiments, activités
 - ✅ Recettes d'activité et de bâtiment éditables via `.tres` (déjà le cas, mais maintenant déclarées via le manifest)
-- Migrer `BUNKER_BUILDING_IDS` (hardcodé dans ColonyView) vers un flag `is_bunker_building: bool` dans `BuildingConfig`
+- ✅ `is_bunker_building: bool` sur `BuildingConfig` (remplace `BUNKER_BUILDING_IDS` hardcodé dans ColonyView)
 - `GameState.resources` reste indexé par string (le `ResourceType` est une fiche descriptive accessible via le registry — pas d'indirection par objet, par anti-scope)
 
 ### Mécaniques de gestion à ajouter
@@ -183,7 +183,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Pas de virtualisation du journal UI** — 1 Label par event. À 1000+ events, à surveiller.
 - **Pas de save state.** À ajouter quand la boucle de gameplay sera plus solide. Le journal est facilement sérialisable (Array de Dictionary).
 - **Vue avec positions absolues = `await process_frame` initial.** Pour l'instant uniquement MapView. Si une nouvelle vue similaire émerge, reproduire le pattern.
-
+- **Audit `translations.csv`** : clés vraisemblablement mortes à grep et supprimer si confirmé : `JOB_*` (enum supprimé en 8.1), `DEATH_*` (remplacés par `EVENT_DEATH_*`), `LABEL_FOOD/WOOD/ORE/HEAT/REACTOR/SYNTH_COST/USABLE/ELEC_HEADER` (anciens labels), `LABEL_SYNTH_TOGGLE` (ancien checkbox synthé), `ROLE_GATHERER/FARMER/HERBALIST/LUMBERJACK/MINER` (anciens roles d'activité). Doublons quasi-identiques à fusionner : `POPUP_NEWS_TITLE`/`NEWS_TITLE`, `POPUP_NEWS_PREFIX`/`NEWS_INTRO`, `BTN_ASSIGN`/`BTN_ASSIGN_WORKER`. Sections "à auditer" déjà marquées dans le CSV.
 ---
 
 ## 🎯 Indicateurs de santé du projet
@@ -217,3 +217,9 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Conventions code**
   - `@warning_ignore("unused_signal")` sur les signals déclarés dans `GameState` mais émis depuis `TurnResolver` (faux positif du linter)
   - Pas de `match` dans une lambda inline GDScript : extraire en variable nommée + `if/elif`
+- **Conventions `translations.csv`**
+  - Organisé par sections, séparées par une ligne vide et un faux-clé `# ─── NOM SECTION ─────,,` (commentaire visuel ; Godot l'ingère mais ne s'en sert pas)
+  - Sections existantes : Game flow, Resources, Production view, Famine, Map & tiles, Survivants, Workers & assignation, Roles, Activities, Colony view, Construction, Buildings, Synthesizer, Computer, News & events, Necrology & deaths, Professions
+  - Préfixes de clés : `BTN_`, `LABEL_`, `RES_`, `BUILDING_`, `EVENT_`, `ACTIVITY_`, `ROLE_`, `PROF_`, `TILE_TYPE_`, `POPUP_`, `PROD_`, `TOOLTIP_`, `NEWS_`
+  - Ajouter une clé = trouver la bonne section (par préfixe), insérer en respectant l'ordre alphabétique local si possible
+  - Sections marquées "(à auditer)" : clés vraisemblablement mortes en attente de vérification — voir dette dédiée

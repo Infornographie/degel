@@ -20,4 +20,5 @@ outputs = Dictionary[String, float]({
 "heat": 3.0
 })
 view_scene = ExtResource("2_dtbqj")
+worker_role_key = "ROLE_FIRE_KEEPER"
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

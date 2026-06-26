@@ -1,128 +1,98 @@
 keys,fr,en
+# ─── GAME FLOW ─────────────────────────────────────,,
 BTN_ADVANCE,Tour suivant,Advance one turn
-BTN_NECROLOGY,Nécrologie,Necrology
-BTN_WAKE,Réveiller (-%.0f élec),Wake (-%.0f reserve)
-BTN_SEARCH,Chercher (-%.0f élec),Search (-%.0f reserve)
-LABEL_SEARCH_FOR,  Chercher :,  Search for:
+BTN_QUIT,Quitter,Quit
+BTN_TOGGLE_LANG,Switch to english,Passer en français
 LABEL_TURN,Tour %d,Turn %d
+LABEL_RUN_ENDED,Partie terminée — %s,Run ended — %s
+LABEL_REACTOR_DEAD,Réacteur éteint,Reactor dead
+LABEL_COLONY_LOST,Colonie perdue,Colony lost
+POPUP_RUN_ENDED,Partie terminée,Run ended
+POPUP_FINAL_SCORE,Score final : %d / %d survivants sauvés.,Final score: %d / %d survivors saved.
+,,
+# ─── RESOURCES ─────────────────────────────────────,,
+RES_FOOD,Nourriture,Food
+RES_MEAL,Repas,Meal
+RES_WOOD,Bois,Wood
+RES_ORE,Minerai,Ore
+RES_TOOLS,Outils,Tools
+RES_ELECTRICITY,Électricité,Electricity
+RES_HEAT,Chaleur,Heat
+,,
+# ─── RESOURCES : ANCIENS LABELS (à auditer) ────────,,
+LABEL_FOOD,Nourriture : %.1f   (+%.1f / -%.1f),Food: %.1f   (+%.1f / -%.1f)
+LABEL_WOOD,Bois : %.1f   (+%.1f),Wood: %.1f   (+%.1f)
+LABEL_ORE,Minerai : %.1f   (+%.1f),Ore: %.1f   (+%.1f)
+LABEL_HEAT,Chaleur (ce tour) : %.1f,Heat (this turn): %.1f
 LABEL_REACTOR,Réacteur : %.0f,Reactor: %.0f
 LABEL_SYNTH_COST,synthé : -%.0f,synth: -%.0f
 LABEL_USABLE,utilisable : %.1f,usable: %.1f
 LABEL_ELEC_HEADER,Électricité — ,Electricity — 
-LABEL_HEAT,Chaleur (ce tour) : %.1f,Heat (this turn): %.1f
-LABEL_FOOD,Nourriture : %.1f   (+%.1f / -%.1f),Food: %.1f   (+%.1f / -%.1f)
-LABEL_WOOD,Bois : %.1f   (+%.1f),Wood: %.1f   (+%.1f)
-LABEL_ORE,Minerai : %.1f   (+%.1f),Ore: %.1f   (+%.1f)
+,,
+# ─── PRODUCTION VIEW ───────────────────────────────,,
+LABEL_PRODUCTION_TITLE,Production,Production
+PROD_HEADER_CONSUMED,Consommé,Consumed
+PROD_HEADER_DELTA,Stock,Stock
+PROD_HEADER_IMPOSSIBLE,Impossible,Impossible
+PROD_RISKY_TITLE,Production aléatoire,Random production
+,,
+# ─── FAMINE ────────────────────────────────────────,,
 LABEL_FAMINE,⚠ Famine — tour %d,⚠ Famine — turn %d
-LABEL_SYNTH_TOGGLE,Synthétiseur de nourriture  (−3 élec → +1 nourriture),Food synthesizer  (−3 elec → +1 food)
-LABEL_AWAKE,Éveillés (%d),Awake (%d)
-LABEL_NOBODY_AWAKE,  (personne d'éveillé pour le moment),  (nobody awake yet)
-LABEL_ASLEEP_HEADER,Pool d'éveil — Encore en cryo : %d,Awakening pool — Still in cryo: %d
-LABEL_CRYO_EMPTY,  (la cryo est vide),  (cryo bay is empty)
+,,
+# ─── MAP & TILES ───────────────────────────────────,,
 LABEL_MAP_TITLE,Carte de surface (cliquez une tuile pour assigner),Surface map (click a tile to assign)
 LABEL_LEGEND_1,Légende : B/P/F/M = Bunker/Plaine/Forêt/Montagne,"Legend:  B/P/F/M = Bunker/Plains/Forest/Mountain"
 LABEL_LEGEND_2,Couleur = type de tuile,"Tile color = type, letter on tile = worker initial when assigned"
+TILE_TYPE_BUNKER,Bunker,Bunker
+TILE_TYPE_PLAINS,Plaine,Plains
+TILE_TYPE_FOREST,Forêt,Forest
+TILE_TYPE_MOUNTAIN,Montagne,Mountain
+TILE_TYPE_SETTLEMENT,Colonie,Settlement
 LABEL_IN_BUNKER,au bunker,in bunker
 LABEL_AT_TILE,sur ,@ 
 LABEL_HERE,  (ici),  (here)
 LABEL_CURRENTLY_AT,  ← actuellement sur ,  ← currently @ 
 LABEL_CLEAR_TILE,Libérer la tuile,Clear tile
-LABEL_NO_WORKER,(aucun travailleur disponible),(no available worker)
-LABEL_RUN_ENDED,Partie terminée — %s,Run ended — %s
-LABEL_REACTOR_DEAD,Réacteur éteint,Reactor dead
-LABEL_COLONY_LOST,Colonie perdue,Colony lost
-POPUP_NEWS_TITLE,Nouvelles du bunker,News from the bunker
-POPUP_NEWS_PREFIX,"La nuit dernière :\n\n","Last night:\n\n"
-POPUP_RUN_ENDED,Partie terminée,Run ended
-POPUP_FINAL_SCORE,Score final : %d / %d survivants sauvés.,Final score: %d / %d survivors saved.
-POPUP_NECROLOGY_TITLE,Nécrologie,Necrology
-POPUP_NECROLOGY_EMPTY,(aucune perte pour le moment),(no losses yet)
-POPUP_NECROLOGY_LINE,Tour %d — %s (%s) — %s,Turn %d — %s (%s) — %s
-DEATH_SWITCHED_OFF,débranché(e),switched off
-DEATH_STARVED,mort(e) de faim,starved
-DEATH_LINE_SWITCHED,"%s (%s) a été débranché(e).","%s (%s) was switched off."
-DEATH_LINE_STARVED,"%s (%s) est mort(e) de faim.","%s (%s) starved to death."
-JOB_IDLE,Repos,Idle
-JOB_FARMER,Cultiver,Farmer
-JOB_LUMBERJACK,Bûcheronner,Lumberjack
-JOB_MINER,Miner,Miner
-TILE_TYPE_BUNKER,Bunker,Bunker
-TILE_TYPE_PLAINS,Plaine,Plains
-TILE_TYPE_FOREST,Forêt,Forest
-TILE_TYPE_MOUNTAIN,Montagne,Mountain
-SEARCH_FAILED,  Aucun(e) %s en cryo. Énergie perdue.,  No %s found in cryo. Reserve spent.
-RES_FOOD,Nourriture,Food
-RES_WOOD,Bois,Wood
-RES_ORE,Minerai,Ore
-RES_ELECTRICITY,Électricité,Electricity
-PROF_CEO,PDG,CEO
-PROF_TRADER,Trader,Trader
-PROF_GAME_DESIGNER,Game designer,Game designer
-PROF_AI_SPECIALIST,Spécialiste IA,AI specialist
-PROF_LAWYER,Avocat,Lawyer
-PROF_COSMETIC_SURGEON,Chirurgien esthétique,Cosmetic surgeon
-PROF_INFLUENCER,Influenceur,Influencer
-PROF_ARCHITECT,Architecte,Architect
-PROF_LOBBYIST,Lobbyiste,Lobbyist
-PROF_PRIVATE_PILOT,Pilote privé,Private pilot
-PROF_BANKER,Banquier,Banker
-PROF_CHEF,Chef étoilé,Michelin-starred chef
-BUILDING_CRYO_ROOM,Salle de cryogénisation,Cryo room
-BUILDING_COMPUTER,Ordinateur central,Main computer
-BUILDING_SYNTHESIZER,Synthétiseur de nourriture,Food synthesizer
-LABEL_COLONY_TITLE,Colonie,Colony
-LABEL_EMPTY_SLOT,(emplacement libre),(empty slot)
-BUILDING_FAMILY_TRANSFORMATION,⚙ transformation,⚙ transformation
-BUILDING_FAMILY_FUNCTION,◇ fonction,◇ function
-BUILDING_CRYO_ROOM,Cryogénisation,Cryo Room
-BUILDING_COMPUTER,Ordinateur central,Central Computer
-BUILDING_SYNTHESIZER,Synthétiseur,Synthesizer
-BTN_QUIT,Quitter,Quit
-BTN_TOGGLE_LANG,Switch to english,Passer en français
-BTN_COMPUTER_INTERACT,Interagir,Interact
-BTN_COMPUTER_CHAT,Discuter avec l'ordinateur,Talk to the computer
-LABEL_SYNTH_RUNNING,En marche,Running
-LABEL_SYNTH_INFO,−3 élec → +1 nourriture,−3 elec → +1 food
-POPUP_COMPUTER_TITLE,Ordinateur central,Central Computer
+,,
+# ─── SURVIVANTS : RÉVEIL & CRYO ────────────────────,,
+BTN_WAKE,Réveiller (-%.0f élec),Wake (-%.0f reserve)
 BTN_WAKE_SHORT,Réveiller,Wake
+BTN_SEARCH,Chercher (-%.0f élec),Search (-%.0f reserve)
+LABEL_SEARCH_FOR,  Chercher :,  Search for:
+SEARCH_FAILED,  Aucun(e) %s en cryo. Énergie perdue.,  No %s found in cryo. Reserve spent.
+LABEL_AWAKE,Éveillés (%d),Awake (%d)
+LABEL_NOBODY_AWAKE,  (personne d'éveillé pour le moment),  (nobody awake yet)
+LABEL_ASLEEP_HEADER,Pool d'éveil — Encore en cryo : %d,Awakening pool — Still in cryo: %d
+LABEL_CRYO_EMPTY,  (la cryo est vide),  (cryo bay is empty)
 LABEL_STILL_IN_CRYO,File de rêveil : %d,Awakening pool: %d
-LABEL_PRODUCTION_TITLE,Production,Production
-RES_HEAT,Chaleur,Heat
-BUILDING_CONSTRUCTION_ZONE,Zone de construction,Construction Zone
-BUILDING_CAMPFIRE,Feu de camp,Campfire
+,,
+# ─── WORKERS & ASSIGNATION ─────────────────────────,,
 LABEL_ASSIGN_WORKER,Affecter un travailleur,Assign a worker
 LABEL_NO_AVAILABLE_WORKER,(aucun éveillé pour le moment),(no awake survivor yet)
+LABEL_NO_WORKER,(aucun travailleur disponible),(no available worker)
 TOOLTIP_CLICK_TO_UNASSIGN,(Clic pour retirer),(Click to unassign)
 BTN_ASSIGN,Affecter,Assign
 BTN_UNASSIGN,Retirer,Unassign
-ROLE_BUILDING_WORKER,Travailleur,Worker
-LABEL_CLEAR_BUILDING,Vider le bâtiment,Clear building
-LABEL_BUILDING_TARGET,Construire : %s,Build: %s
-LABEL_NO_TARGET,(rien à construire),(no target)
-LABEL_CLEAR_TARGET,Aucune cible,No target
-LABEL_PLACE_HERE,(placer ici),(place here)
-LABEL_UNDER_CONSTRUCTION,en construction,under construction
-LABEL_OPERATIONAL,opérationnel,operational
-BTN_CHOOSE_TARGET,Choisir une cible,Choose target
 BTN_ASSIGN_WORKER,Affecter,Assign
-RES_TOOLS,Outils,Tools
-BUILDING_TOOL_WORKSHOP,Atelier d'outils,Tool Workshop
-TILE_TYPE_SETTLEMENT,Colonie,Settlement
+LABEL_CLEAR_BUILDING,Vider le bâtiment,Clear building
+,,
+# ─── ROLES (bâtiments) ─────────────────────────────,,
+ROLE_BUILDING_WORKER,Travailleur,Worker
 ROLE_IDLE,Inactif,Idle
 ROLE_BUILDER,Bâtisseur,Builder
 ROLE_SYNTH_OPERATOR,Opérateur synthé,Synth operator
 ROLE_FIRE_KEEPER,Gardien du feu,Fire keeper
 ROLE_COOK,Cuisinier,Cook
 ROLE_TOOLMAKER,Outilleur,Toolmaker
+,,
+# ─── ROLES : ANCIENS (à auditer) ───────────────────,,
 ROLE_GATHERER,Cueilleur,Gatherer
 ROLE_FARMER,Cultivateur,Farmer
 ROLE_HERBALIST,Herboriste,Herbalist
 ROLE_LUMBERJACK,Bûcheron,Lumberjack
 ROLE_MINER,Mineur,Miner
-LABEL_IN_SETTLEMENT_BRACKETS,(Colonie),(Settlement)
-LABEL_IN_SETTLEMENT,dans la colonie,in settlement
-LABEL_IDLE_IN_SETTLEMENT,inactif dans la colonie,idle in settlement
-LABEL_IDLE,inactif,idle
+,,
+# ─── ACTIVITIES (tuiles) ───────────────────────────,,
 ACTIVITY_GATHERING,Cueillette,Gathering
 ACTIVITY_HUNTING,Chasse,Hunting
 ACTIVITY_WOOD_PICKER,Ramasseur de bois,Wood picker
@@ -130,12 +100,55 @@ ACTIVITY_LUMBERJACK,Bûcheron,Lumberjack
 ACTIVITY_FORESTER,Forestier,Forester
 ACTIVITY_GARDENER,Jardinier,Gardener
 ACTIVITY_ORE_PICKER,Ramasseur de minerai,Ore picker
-PROD_HEADER_CONSUMED,Consommé,Consumed
-PROD_HEADER_DELTA,Stock,Stock
-PROD_HEADER_IMPOSSIBLE,Impossible,Impossible
-PROD_RISKY_TITLE,Production aléatoire,Random production
+,,
+# ─── COLONY VIEW ───────────────────────────────────,,
+LABEL_COLONY_TITLE,Colonie,Colony
+LABEL_EMPTY_SLOT,(emplacement libre),(empty slot)
+LABEL_IN_SETTLEMENT_BRACKETS,(Colonie),(Settlement)
+LABEL_IN_SETTLEMENT,dans la colonie,in settlement
+LABEL_IDLE_IN_SETTLEMENT,inactif dans la colonie,idle in settlement
+LABEL_IDLE,inactif,idle
+,,
+# ─── CONSTRUCTION ──────────────────────────────────,,
+LABEL_BUILDING_TARGET,Construire : %s,Build: %s
+LABEL_NO_TARGET,(rien à construire),(no target)
+LABEL_CLEAR_TARGET,Aucune cible,No target
+LABEL_PLACE_HERE,(placer ici),(place here)
+LABEL_UNDER_CONSTRUCTION,en construction,under construction
+LABEL_OPERATIONAL,opérationnel,operational
+BTN_CHOOSE_TARGET,Choisir une cible,Choose target
+,,
+# ─── BUILDINGS ─────────────────────────────────────,,
+BUILDING_CRYO_ROOM,Cryogénisation,Cryo Room
+BUILDING_COMPUTER,Ordinateur central,Central Computer
+BUILDING_SYNTHESIZER,Synthétiseur,Synthesizer
+BUILDING_CONSTRUCTION_ZONE,Zone de construction,Construction Zone
+BUILDING_CAMPFIRE,Feu de camp,Campfire
+BUILDING_TOOL_WORKSHOP,Atelier d'outils,Tool Workshop
+BUILDING_CANTEEN,Cantine,Canteen
+BUILDING_CANTEEN_DESC,Permet aux survivants de préparer des repas.,Allows survivors to prepare meals.
+,,
+# ─── BUILDINGS : FAMILLES ──────────────────────────,,
+BUILDING_FAMILY_TRANSFORMATION,⚙ transformation,⚙ transformation
+BUILDING_FAMILY_FUNCTION,◇ fonction,◇ function
+,,
+# ─── SYNTHESIZER (vue dédiée) ──────────────────────,,
+LABEL_SYNTH_TOGGLE,Synthétiseur de nourriture  (−3 élec → +1 nourriture),Food synthesizer  (−3 elec → +1 food)
+LABEL_SYNTH_RUNNING,En marche,Running
+LABEL_SYNTH_INFO,−3 élec → +1 nourriture,−3 elec → +1 food
+,,
+# ─── COMPUTER (vue dédiée) ─────────────────────────,,
+BTN_COMPUTER_INTERACT,Interagir,Interact
+BTN_COMPUTER_CHAT,Discuter avec l'ordinateur,Talk to the computer
+POPUP_COMPUTER_TITLE,Ordinateur central,Central Computer
+,,
+# ─── NEWS & EVENTS ─────────────────────────────────,,
 NEWS_TITLE,Nouvelles du bunker,News from the bunker
 NEWS_INTRO,La nuit dernière :,Last night:
+POPUP_NEWS_TITLE,Nouvelles du bunker,News from the bunker
+POPUP_NEWS_PREFIX,"La nuit dernière :\n\n","Last night:\n\n"
+LABEL_EVENT_LOG_TITLE,Journal,Journal
+LABEL_EVENT_TURN_PREFIX,[T%d],[T%d]
 EVENT_WAKE,%s (%s) émerge de la cryo.,%s (%s) wakes from cryosleep.
 EVENT_TARGETED_WAKE_SUCCESS,%s (%s) est repéré·e dans la cryo.,%s (%s) located in cryo.
 EVENT_TARGETED_WAKE_FAIL,Aucun·e %s trouvé·e en cryo.,No %s found in cryo.
@@ -150,8 +163,33 @@ EVENT_HUNT_SUCCESS,%s (%s) revient avec du gibier.,%s (%s) returns with prey.
 EVENT_HUNT_FAIL,%s (%s) rentre bredouille.,%s (%s) returns empty-handed.
 EVENT_HUNT_NO_INPUTS,%s (%s) manque d'outils pour chasser.,%s (%s) lacks tools for hunting.
 EVENT_FOREST_DEPLETED,Une forêt est devenue plaine.,A forest has become plain.
-LABEL_EVENT_LOG_TITLE,Journal,Journal
-LABEL_EVENT_TURN_PREFIX,[T%d],[T%d]
-RES_MEAL,Repas,Meal
-BUILDING_CANTEEN,Cantine,Canteen
-BUILDING_CANTEEN_DESC,Permet aux survivants de préparer des repas.,Allows survivors to prepare meals.
+,,
+# ─── NECROLOGY & DEATHS ────────────────────────────,,
+BTN_NECROLOGY,Nécrologie,Necrology
+POPUP_NECROLOGY_TITLE,Nécrologie,Necrology
+POPUP_NECROLOGY_EMPTY,(aucune perte pour le moment),(no losses yet)
+POPUP_NECROLOGY_LINE,Tour %d — %s (%s) — %s,Turn %d — %s (%s) — %s
+DEATH_SWITCHED_OFF,débranché(e),switched off
+DEATH_STARVED,mort(e) de faim,starved
+DEATH_LINE_SWITCHED,"%s (%s) a été débranché(e).","%s (%s) was switched off."
+DEATH_LINE_STARVED,"%s (%s) est mort(e) de faim.","%s (%s) starved to death."
+,,
+# ─── PROFESSIONS ───────────────────────────────────,,
+PROF_CEO,PDG,CEO
+PROF_TRADER,Trader,Trader
+PROF_GAME_DESIGNER,Game designer,Game designer
+PROF_AI_SPECIALIST,Spécialiste IA,AI specialist
+PROF_LAWYER,Avocat,Lawyer
+PROF_COSMETIC_SURGEON,Chirurgien esthétique,Cosmetic surgeon
+PROF_INFLUENCER,Influenceur,Influencer
+PROF_ARCHITECT,Architecte,Architect
+PROF_LOBBYIST,Lobbyiste,Lobbyist
+PROF_PRIVATE_PILOT,Pilote privé,Private pilot
+PROF_BANKER,Banquier,Banker
+PROF_CHEF,Chef étoilé,Michelin-starred chef
+,,
+# ─── JOBS : LEGACY (à supprimer ?) ─────────────────,,
+JOB_IDLE,Repos,Idle
+JOB_FARMER,Cultiver,Farmer
+JOB_LUMBERJACK,Bûcheronner,Lumberjack
+JOB_MINER,Miner,Miner

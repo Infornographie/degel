@@ -40,15 +40,14 @@ static func tile_label(key: String) -> String:
 	var type_key: String = "TILE_TYPE_" + HexTile.Type.keys()[tile.type]
 	return "%s (%d,%d)" % [TranslationServer.translate(type_key), tile.q, tile.r]
 
-## Rôle d'un survivant assigné à un bâtiment.
+## Rôle d'un survivant assigné à un bâtiment. Lu depuis BuildingConfig.worker_role_key,
+## fallback ROLE_BUILDING_WORKER si le bâtiment n'en déclare pas.
 static func activity_for_building(building_id: String) -> String:
-	match building_id:
-		"construction_zone": return TranslationServer.translate("ROLE_BUILDER")
-		"synthesizer": return TranslationServer.translate("ROLE_SYNTH_OPERATOR")
-		"campfire": return TranslationServer.translate("ROLE_FIRE_KEEPER")
-		"kitchen": return TranslationServer.translate("ROLE_COOK")
-		"tool_workshop": return TranslationServer.translate("ROLE_TOOLMAKER")
-		_: return TranslationServer.translate("ROLE_BUILDING_WORKER")
+	var config: BuildingConfig = GameState.building_registry.get_config(building_id)
+	var key: String = "ROLE_BUILDING_WORKER"
+	if config != null and config.worker_role_key != "":
+		key = config.worker_role_key
+	return TranslationServer.translate(key)
 
 ## Activité courante d'un survivant : bâtiment, tuile, ou idle.
 static func activity(s: Survivor) -> String:

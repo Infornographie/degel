@@ -20,4 +20,5 @@ outputs = Dictionary[String, float]({
 "tools": 3.0
 })
 view_scene = ExtResource("2_h7522")
+worker_role_key = "ROLE_TOOLMAKER"
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

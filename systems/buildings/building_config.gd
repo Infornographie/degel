@@ -64,3 +64,11 @@ enum Family {
 ## d'erreur ; tu peux pointer vers generic_building_view.tscn pour les
 ## bâtiments génériques sans UI dédiée.
 @export var view_scene: PackedScene
+## Si vrai, le bâtiment est affiché avec le style "bunker" (bleu froid),
+## sinon avec le style "colonie" (brun chaud). Indépendant de is_starter :
+## conceptuellement, le bunker est l'héritage pré-apocalypse, la colonie
+## est ce qu'on construit dehors.
+@export var is_bunker_building: bool = false
+## Clé de localisation du rôle affiché pour les workers assignés (ex : ROLE_COOK).
+## Si vide, fallback générique ROLE_BUILDING_WORKER.
+@export var worker_role_key: String = ""
