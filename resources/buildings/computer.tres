@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://ijok7a07khuv"]
 
 [ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_kuksc"]
+[ext_resource type="PackedScene" path="res://scenes/ui/buildings/computer_view.tscn" id="2_u2cpr"]
 
 [resource]
 script = ExtResource("1_kuksc")
@@ -8,4 +9,5 @@ id = "computer"
 name_key = "BUILDING_COMPUTER"
 family = 1
 is_starter = true
+view_scene = ExtResource("2_u2cpr")
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

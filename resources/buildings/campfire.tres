@@ -1,15 +1,16 @@
 [gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://ds1gldxw4baqb"]
 
 [ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_hmo0i"]
+[ext_resource type="PackedScene" path="res://scenes/ui/buildings/generic_building_view.tscn" id="2_dtbqj"]
 
 [resource]
 script = ExtResource("1_hmo0i")
 id = "campfire"
 name_key = "BUILDING_CAMPFIRE"
-build_cost = {
+build_cost = Dictionary[String, float]({
 "ore": 10.0,
 "wood": 10.0
-}
+})
 build_order = Array[String](["wood", "ore"])
 build_work = 3.0
 inputs = Dictionary[String, float]({
@@ -18,4 +19,5 @@ inputs = Dictionary[String, float]({
 outputs = Dictionary[String, float]({
 "heat": 3.0
 })
+view_scene = ExtResource("2_dtbqj")
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

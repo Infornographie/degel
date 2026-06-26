@@ -58,3 +58,9 @@ enum Family {
 @export var unique: bool = true
 ## Est-ce que le bâtiment est accessible à la construction ?
 @export var available: bool = true
+
+@export_group("UI")
+## Vue UI à instancier dans le slot colony. Si null, fallback vers un Label
+## d'erreur ; tu peux pointer vers generic_building_view.tscn pour les
+## bâtiments génériques sans UI dédiée.
+@export var view_scene: PackedScene

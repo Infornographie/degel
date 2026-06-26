@@ -4,11 +4,9 @@ class_name ColonyView
 ## zone de construction) à des emplacements fixes, autres bâtiments selon leur
 ## slot_index, slots vides ailleurs.
 ##
-## Le rendu d'un slot occupé est délégué à MainUi via _render_slot_fn (le
-## temps que les `_make_*_slot` deviennent leurs propres vues — séance 2).
-## ColonyView reste responsable du grid layout, des slots vides, et du mode
-## placement (le joueur a choisi un type à construire, attend qu'on clique
-## un slot libre).
+## Le rendu d'un slot occupé est délégué à la vue spécifique du bâtiment via
+## `BuildingConfig.view_scene`. Si une vue émet `placement_mode_requested`,
+## ColonyView l'écoute et bascule en mode placement.
 ##
 ## Note layout : le nombre de slots et la disposition des starters sont
 ## hardcodés ici. À terme, déplacer dans une Resource configurable (dette).
@@ -26,7 +24,6 @@ const STARTER_SLOTS := {
 
 var _grid: GridContainer
 var _placement_mode_type_id: String = ""
-var _render_slot_fn: Callable
 
 func _ready() -> void:
 	_build()
@@ -41,11 +38,6 @@ func _ready() -> void:
 	GameState.construction_progressed.connect(_rebuild)
 	GameState.construction_completed.connect(_rebuild)
 	_rebuild()
-
-## Branchement de la fonction de rendu des slots occupés. Appelée par MainUi
-## à l'instanciation, avant que les signaux ne soient émis.
-func set_render_slot_fn(fn: Callable) -> void:
-	_render_slot_fn = fn
 
 func _build() -> void:
 	var vbox := VBoxContainer.new()
@@ -72,7 +64,7 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 	for child in _grid.get_children():
 		_grid.remove_child(child)
 		child.queue_free()
-	# Map slot_index → Building (starters fixes + autres bâtiments selon slot_index)
+	# Map slot_index → Building
 	var slot_to_building := {}
 	for starter_id in STARTER_SLOTS:
 		var starter := _find_starter(starter_id)
@@ -85,9 +77,7 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 	# Render
 	for i in COLONY_SLOTS:
 		if slot_to_building.has(i):
-			if _render_slot_fn.is_valid():
-				var node: Control = _render_slot_fn.call(slot_to_building[i])
-				_grid.add_child(node)
+			_grid.add_child(_make_building_slot(slot_to_building[i]))
 		else:
 			_grid.add_child(_make_empty_slot(i))
 
@@ -102,6 +92,25 @@ func _find_starter(id: String) -> Building:
 		if b.config.id == id:
 			return b
 	return null
+
+## Wrap la vue spécifique du bâtiment dans un panel slot stylé.
+## Si la vue émet placement_mode_requested, on s'y abonne.
+func _make_building_slot(b: Building) -> PanelContainer:
+	var is_bunker := b.config.id in BUNKER_BUILDING_IDS
+	var panel := UiPresentation.slot_panel(is_bunker)
+	if b.config.view_scene == null:
+		push_warning("No view_scene for building %s" % b.config.id)
+		var fallback := Label.new()
+		fallback.text = tr(b.config.name_key) + " (no view)"
+		panel.add_child(fallback)
+		return panel
+	var view: Node = b.config.view_scene.instantiate()
+	if view.has_method("setup"):
+		view.setup(b)
+	if view.has_signal("placement_mode_requested"):
+		view.placement_mode_requested.connect(enter_placement_mode)
+	panel.add_child(view)
+	return panel
 
 func _make_empty_slot(slot_idx: int) -> PanelContainer:
 	var panel := UiPresentation.slot_panel(false)

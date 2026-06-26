@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://cp7bsn26hvug6"]
 
 [ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_g47bg"]
+[ext_resource type="PackedScene" path="res://scenes/ui/buildings/construction_zone_view.tscn" id="2_ijisv"]
 
 [resource]
 script = ExtResource("1_g47bg")
@@ -8,4 +9,5 @@ id = "construction_zone"
 name_key = "BUILDING_CONSTRUCTION_ZONE"
 family = 1
 is_starter = true
+view_scene = ExtResource("2_ijisv")
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

@@ -1,6 +1,7 @@
 [gd_resource type="Resource" script_class="BuildingConfig" format=3 uid="uid://dxrx47erw4dow"]
 
 [ext_resource type="Script" uid="uid://djgwy70yusm4w" path="res://systems/buildings/building_config.gd" id="1_treeh"]
+[ext_resource type="PackedScene" path="res://scenes/ui/buildings/generic_building_view.tscn" id="2_h7522"]
 
 [resource]
 script = ExtResource("1_treeh")
@@ -18,4 +19,5 @@ inputs = Dictionary[String, float]({
 outputs = Dictionary[String, float]({
 "tools": 3.0
 })
+view_scene = ExtResource("2_h7522")
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

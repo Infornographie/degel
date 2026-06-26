@@ -98,6 +98,7 @@ Refacto de la dette accumulée. Trois sous-phases identifiées, deux faites.
 - **3f — Extraction de ResourcesBar.** Vue transversale de la barre des stocks (food/wood/ore/tools, scrollable horizontalement). Lecture seule, abonnée à `resources_changed`. `main_ui.gd` réduit de ~33 lignes.
 - **3g — Extraction de ButtonsSection.** Vue transversale des boutons d'action globaux + status label de fin de run. Pattern signal pour le couplage avec MainUi : émet `language_toggled` quand le rebuild complet de l'UI est nécessaire (responsabilité MainUi). `UiPresentation.show_popup()` ajoutée et adoptée par les trois sites (necrology, nightly news, run ended). `main_ui.gd` réduit de ~50 lignes.
 - **3h — Extraction de ColonyView (orchestrateur grid + slots).** Vue transversale de la grille colony 4×3. Layout, slots vides, mode placement, dispatch des starters aux emplacements fixes. Les 5 `_add_*_slot` de MainUi sont refactorées en `_make_*_slot` qui retournent un Control — ColonyView les appelle via Callable. `UiPresentation` augmenté de `slot_panel`, `slot_title`, `assigned_worker_sprite`. `main_ui.gd` réduit de ~150 lignes.
+- **3i — Slots bâtiment en vues dédiées, dispatch data-driven.** Chaque bâtiment a sa vue dans `res://scenes/ui/buildings/`, référencée via `BuildingConfig.view_scene: PackedScene`. ColonyView dispatch sans `match` ni Callable. `UiPresentation.open_building_popup` extrait (partagé entre 2 vues). ConstructionZoneView émet `placement_mode_requested` que ColonyView écoute. Pattern "ajouter un bâtiment sans toucher au code" désormais atteint : il suffit d'un `.tres` + une `.tscn` (ou réutiliser `generic_building_view`). `main_ui.gd` réduit de ~300 lignes.
 - **4 — Suppression du legacy Job.** `enum Job`, `var job_outputs` et son init dans `game_state.gd`. Fonctions mortes `_on_tile_popup_selected` et `_aggregate_production` dans `main_ui.gd`. Commentaire obsolète sur `GameState.Job.X` dans `hex_tile.gd`. Confirmé par grep global : zéro référence restante.
 
 Sous-phase 3 (les autres vues : ColonyView, MapView, SurvivorsView, CryoView, InfosSection) reste à faire — pattern validé, reproduction vue par vue.
@@ -205,6 +206,10 @@ Signaux candidats : cohabitation, travail partagé, événements vécus ensemble
 - **Layout colony hardcodé** (`COLONY_SLOTS=12`, `STARTER_SLOTS` dictionnaire d'emplacements) dans `ColonyView`. À déplacer dans une Resource configurable quand l'équilibrage et les nouveaux bâtiments l'exigeront.
 - **`_render_slot_fn: Callable`** est un couplage transitoire ColonyView ↔ MainUi. Disparaîtra en séance 2 (Phase 8.3i) quand chaque slot deviendra sa propre vue dans `res://scenes/ui/buildings/` avec dispatch data-driven via `BuildingConfig.view_scene`.
 - **`BUNKER_BUILDING_IDS`** migré dans ColonyView mais peut-être plus utilisé nulle part. À grep et supprimer si vrai.
+- **Risque de deux popups ouverts simultanément** : mécanisme "un seul popup à la fois" perdu (était assuré par `_tile_popup` partagé dans MainUi). En pratique l'UX tient — un clic à la fois. Si problème observé, extraire un `PopupManager`.
+- **`BUNKER_BUILDING_IDS` hardcodé dans ColonyView**. À déplacer dans `BuildingConfig.is_bunker_building: bool` pour rendre l'ajout d'un nouveau bâtiment 100% data-driven.
+- **Layout colony hardcodé** (`COLONY_SLOTS=12`, `STARTER_SLOTS`). À mettre dans une Resource configurable quand l'équilibrage l'exigera.
+- **`CryoView` n'a pas de `setup(b)`**. ColonyView gère via `has_method` mais hétérogène. À homogénéiser quand on touchera CryoView pour les futures évolutions visuelles.
 ---
  
 ## 🎯 Indicateurs de santé du projet

@@ -173,3 +173,67 @@ static func assigned_worker_sprite(s: Survivor) -> Control:
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			GameState.unassign_from_building(sid))
 	return sprite
+
+## Popup d'affectation d'un worker à un bâtiment opérationnel. Liste les
+## éveillés avec leur localisation actuelle. Auto-cleanup à la fermeture.
+##
+## Migré depuis MainUi (séance 8.3i). Chaque appel crée un popup local —
+## on perd la propriété "un seul popup à la fois" mais on gagne en simplicité
+## et en découplage.
+## Popup d'affectation d'un worker à un bâtiment opérationnel.
+static func open_building_popup(parent: Node, b: Building, popup_position: Vector2) -> void:
+	var popup := PopupMenu.new()
+	parent.add_child(popup)
+	# Option Clear si le bâtiment a des workers
+	if not b.worker_ids.is_empty():
+		popup.add_item(TranslationServer.translate("LABEL_CLEAR_BUILDING"))
+		popup.set_item_metadata(popup.item_count - 1, {"action": "clear_building", "building_id": b.config.id})
+		popup.add_separator()
+	# Liste des éveillés
+	var any := false
+	for s in GameState.awake_survivors():
+		var location_hint := ""
+		if s.tile_key != "":
+			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
+			if current_tile != null:
+				location_hint = "  ← " + activity(s) + " @ " + tile_label(s.tile_key)
+		elif s.building_id != "" and s.building_id != b.config.id:
+			var other: Building = GameState._find_building_by_type(s.building_id)
+			if other != null:
+				location_hint = "  ← " + activity_for_building(other.config.id) + " @ " + TranslationServer.translate(other.config.name_key)
+		elif s.building_id == b.config.id:
+			location_hint = "  " + TranslationServer.translate("LABEL_HERE")
+		else:
+			location_hint = "  (" + TranslationServer.translate("LABEL_IDLE") + ")"
+		popup.add_item("%s (%s)%s" % [s.name, TranslationServer.translate(s.profession), location_hint])
+		popup.set_item_metadata(popup.item_count - 1, {
+			"action": "assign_to_building",
+			"survivor_id": s.id,
+			"building_id": b.config.id,
+		})
+		any = true
+	if not any:
+		popup.add_item(TranslationServer.translate("LABEL_NO_AVAILABLE_WORKER"))
+		popup.set_item_disabled(popup.item_count - 1, true)
+	var handler := func(index: int) -> void:
+		var meta = popup.get_item_metadata(index)
+		if meta == null:
+			return
+		var action: String = meta.get("action", "")
+		if action == "clear_building":
+			var bb: Building = GameState._find_building(meta["building_id"])
+			if bb != null:
+				for wid in bb.worker_ids.duplicate():
+					GameState.unassign_from_building(wid)
+		elif action == "assign_to_building":
+			var sid: int = meta["survivor_id"]
+			var bid: String = meta["building_id"]
+			var sv: Survivor = GameState.roster.get_by_id(sid)
+			if sv != null and sv.building_id == bid:
+				GameState.unassign_from_building(sid)
+			else:
+				GameState.assign_to_building(sid, bid)
+	popup.id_pressed.connect(handler)
+	popup.popup_hide.connect(popup.queue_free)
+	popup.position = Vector2i(popup_position)
+	popup.popup()
