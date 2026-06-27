@@ -133,7 +133,6 @@ BUILDING_FAMILY_TRANSFORMATION,⚙ transformation,⚙ transformation
 BUILDING_FAMILY_FUNCTION,◇ fonction,◇ function
 ,,
 # ─── SYNTHESIZER (vue dédiée) ──────────────────────,,
-LABEL_SYNTH_TOGGLE,Synthétiseur de nourriture  (−3 élec → +1 nourriture),Food synthesizer  (−3 elec → +1 food)
 LABEL_SYNTH_RUNNING,En marche,Running
 LABEL_SYNTH_INFO,−3 élec → +1 nourriture,−3 elec → +1 food
 ,,

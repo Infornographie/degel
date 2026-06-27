@@ -95,6 +95,7 @@ Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désorma
 - ✅ Manifest central `GameRegistry` regroupant ressources, bâtiments, activités
 - ✅ Recettes d'activité et de bâtiment éditables via `.tres` (déjà le cas, mais maintenant déclarées via le manifest)
 - ✅ `is_bunker_building: bool` sur `BuildingConfig` (remplace `BUNKER_BUILDING_IDS` hardcodé dans ColonyView)
+- ✅ `synthesizer` : coûts élec lus depuis `synthesizer.tres > inputs.electricity` (constantes `SYNTH_*` mortes supprimées de `GameState`)
 - `GameState.resources` reste indexé par string (le `ResourceType` est une fiche descriptive accessible via le registry — pas d'indirection par objet, par anti-scope)
 
 ### Mécaniques de gestion à ajouter
@@ -167,7 +168,6 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Signal `nightly_deaths` mal nommé** : porte tous les events du tour, pas seulement les morts. À renommer (`turn_news` ou `nightly_events`).
 - **`construction_started` réutilisé pour rafraîchir l'UI** (deux call sites avec `# rafraîchir` en commentaire dans `game_state.gd`). Un vrai signal de refresh manque.
 - **Doublon `_find_building` vs `_find_building_by_type`** dans `GameState`. Fusion à faire en passant.
-- **`GameState.set_synth`** potentiellement morte (à grep). Cleanup côté simulation si confirmé.
 - **Layout colony hardcodé** (`COLONY_SLOTS=12`, `STARTER_SLOTS`) dans `ColonyView`. À déplacer dans une Resource configurable quand l'équilibrage l'exigera.
 - **Ordre des bâtiments dans `_resolve_buildings_operation`** : premier servi sur les inputs partagés. Acceptable, à raffiner si gênant.
 - **UI/loc encore branchées sur strings hardcodées — migration en cours.** `GameState.resources["food"]` reste la clé d'accès (par design). Côté affichage : `UiPresentation.resource()`, `UiPresentation.resource_icon()`, `ResourcesBar` et `ProductionView` migrés sur `ResourceRegistry`. Restent à migrer au fil des touches : `InfosSection` (affichage électricité/heat) et autres callsites qui hardcodent encore des noms de ressources.

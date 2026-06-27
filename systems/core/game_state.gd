@@ -72,10 +72,6 @@ func events_for_turn(t: int) -> Array[GameEvent]:
 var _deaths_this_turn: Array = []
 var necrology: Array = []  # entrées { name, profession, cause, turn }
 
-# --- Synthétiseur ---
-const SYNTH_ELECTRICITY_COST: float = 3.0
-const SYNTH_FOOD_OUTPUT: float = 1.0
-
 # --- Réveils ---
 var _wakes_done_this_turn: int = 0
 var _next_wake_order: int = 0

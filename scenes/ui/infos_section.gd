@@ -82,7 +82,8 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 	elec_parts.append(tr("LABEL_REACTOR") % GameState.reactor_output)
 	var synth: Building = GameState._find_building_by_type("synthesizer")
 	if synth != null and synth.active:
-		elec_parts.append(tr("LABEL_SYNTH_COST") % GameState.SYNTH_ELECTRICITY_COST)
+		var synth_elec_cost: float = synth.config.inputs.get("electricity", 0.0)
+		elec_parts.append(tr("LABEL_SYNTH_COST") % synth_elec_cost)
 	elec_parts.append(tr("LABEL_USABLE") % elec_value)
 	var elec_label := Label.new()
 	elec_label.text = tr("LABEL_ELEC_HEADER") + " | ".join(elec_parts)
