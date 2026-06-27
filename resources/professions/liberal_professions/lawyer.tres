@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://bkimuo7v1d1vp"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_0v8ub"]
+[ext_resource type="Texture2D" uid="uid://bvnt6cbffjkoi" path="res://assets/survivors/generic3.png" id="2_4ejsh"]
+[ext_resource type="Resource" uid="uid://buujkr787hj41" path="res://resources/tribes/liberal_professions.tres" id="3_mblyi"]
+
+[resource]
+script = ExtResource("1_0v8ub")
+id = &"lawyer"
+name_key = "PROF_LAWYER"
+tribe = ExtResource("3_mblyi")
+sprite = ExtResource("2_4ejsh")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="Tribe" format=3 uid="uid://c76y3d6nno71c"]
+
+[ext_resource type="Script" uid="uid://mcdpj3jdq3a6" path="res://systems/survivors/tribe.gd" id="1_l2axa"]
+
+[resource]
+script = ExtResource("1_l2axa")
+id = &"useful_elite"
+name_key = "TRIBE_USEFUL_ELITE"
+metadata/_custom_type_script = "uid://mcdpj3jdq3a6"

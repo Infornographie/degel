@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://cnr6h4db586ec"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_xq3qe"]
+[ext_resource type="Texture2D" uid="uid://bvnt6cbffjkoi" path="res://assets/survivors/generic3.png" id="2_ktksy"]
+[ext_resource type="Resource" uid="uid://buujkr787hj41" path="res://resources/tribes/liberal_professions.tres" id="3_u0q2u"]
+
+[resource]
+script = ExtResource("1_xq3qe")
+id = &"tax_consultant"
+name_key = "PROF_TAX_CONSULTANT"
+tribe = ExtResource("3_u0q2u")
+rarity = 3
+sprite = ExtResource("2_ktksy")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

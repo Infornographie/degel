@@ -56,7 +56,7 @@ func _on_necrology_pressed() -> void:
 		elif entry.cause == "starved":
 			cause_label = tr("DEATH_STARVED")
 		lines.append(tr("POPUP_NECROLOGY_LINE") % [
-			entry.turn, entry.name, tr(entry.profession), cause_label])
+			entry.turn, entry.name, Roster.display_name(entry.profession), cause_label])
 	var content := "\n".join(lines) if not lines.is_empty() else tr("POPUP_NECROLOGY_EMPTY")
 	UiPresentation.show_popup(self, tr("BTN_NECROLOGY"), content)
 

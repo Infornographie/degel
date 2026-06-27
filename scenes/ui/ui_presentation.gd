@@ -112,7 +112,13 @@ static func production_icon(resource_name: String, overlay: String) -> Control:
 ## colony view (via le helper assigned_worker_sprite encore dans main_ui).
 static func survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
 	var sprite := TextureRect.new()
-	sprite.texture = load(SURVIVOR_SPRITE_PATH % s.sprite_variant)
+	# Sprite spécifique à la profession si défini, fallback générique sinon
+	# (toutes les Profession.tres n'ont pas encore leur sprite).
+	var prof := Roster.get_profession(s.profession)
+	if prof != null and prof.sprite != null:
+		sprite.texture = prof.sprite
+	else:
+		sprite.texture = load(SURVIVOR_SPRITE_PATH % s.sprite_variant)
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pour pixel art net
 	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
@@ -160,7 +166,7 @@ static func slot_title(text: String) -> Label:
 static func assigned_worker_sprite(s: Survivor) -> Control:
 	var tooltip := "%s\n%s\n\n%s" % [
 		s.name,
-		TranslationServer.translate(s.profession),
+		Roster.display_name(s.profession),
 		TranslationServer.translate("TOOLTIP_CLICK_TO_UNASSIGN"),
 	]
 	var sprite := survivor_sprite(s, tooltip)
@@ -202,7 +208,7 @@ static func open_building_popup(parent: Node, b: Building, popup_position: Vecto
 			location_hint = "  " + TranslationServer.translate("LABEL_HERE")
 		else:
 			location_hint = "  (" + TranslationServer.translate("LABEL_IDLE") + ")"
-		popup.add_item("%s (%s)%s" % [s.name, TranslationServer.translate(s.profession), location_hint])
+		popup.add_item("%s (%s)%s" % [s.name, Roster.display_name(s.profession), location_hint])
 		popup.set_item_metadata(popup.item_count - 1, {
 			"action": "assign_to_building",
 			"survivor_id": s.id,

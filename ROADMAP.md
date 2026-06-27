@@ -66,6 +66,21 @@ Refacto progressive de la dette accumulée. `main_ui.gd` passe de **1573 → ~14
 
 Conséquence stratégique : ajouter un bâtiment ne nécessite désormais qu'un `.tres` + une `.tscn` (ou réutiliser `generic_building_view`). Le terrain est prêt pour la phase data-driven complète.
 
+### Phase 9 — Data-driven complet : roster, tribus, professions
+
+Migration de `Roster.NAMES` / `PROFESSIONS` hardcodés vers un système entièrement data-driven, branché sur le manifest central `GameRegistry`.
+
+- **`Profession.tres`** : id, name_key, tribu, rareté (enum `Rarity { ABSENT, ELITE, RARE, UNCOMMON, COMMON }`), `min_count` (garantie de présence), sprite.
+- **`Tribe.tres`** : catégorie narrative invisible au joueur, support du futur système d'événements. 8 tribus posées : ruling_elite, finance, useless_tech, useful_elite, artistic_elite, liberal_professions, services, practical.
+- **28 professions** réparties dans les tribus avec rareté graduée. Garanties de présence sur les pratiques (subsistence_farmer, auto_mechanic, practical_nurse) et le chef étoilé, pour ne pas laisser ces tribus statistiquement absentes.
+- **Tirage pondéré** : poids `RARITY_WEIGHTS` (ABSENT=0, ELITE=1, RARE=3, UNCOMMON=10, COMMON=30). Étape 1 honore les min_count, étape 2 remplit au tirage pondéré. ABSENT permet de griser une profession dans un scénario sans la supprimer.
+- **`Survivor.profession`** : passé de `String` (display name) à `StringName` (id). `Roster.display_name(id)` pour l'affichage immédiat, `Roster.name_key(id)` pour les logs d'événements avec préfixe `"tr:"` (traduction différée). Migration de tous les callers : game_state, turn_resolver, production_system, computer_view, cryo_view, map_view, survivors_view, ui_presentation, buttons_section.
+- **Cache statique** : `Roster._professions_by_id` construit au premier appel pour lookup O(1). Sans ce cache, le jeu lagguait massivement (3 secondes par action) — bug surpris dès le premier test, corrigé immédiatement.
+- **Sprites par profession** : champ `Profession.sprite` lu par `UiPresentation.survivor_sprite()` et `MapView`. Fallback générique sur `sprite_variant` tant que les sprites ne sont pas tous fournis.
+- **GameRegistry étendu** : `tribes`, `professions`, `names` ajoutés au manifest central. Tout le contenu roster édité dans l'inspecteur, zéro code à toucher pour ajouter une profession.
+
+Conséquence stratégique : la couche narrative à venir (Jalon 7) trouve déjà ses crochets posés — tribus pour les événements de groupe, professions pour les événements ciblés, sprites pour la caractérisation visuelle.
+
 ### Build & livraison
 
 Build Windows exportable (BuildingRegistry/ActivityRegistry chargent via listes explicites, `DirAccess` ne marche pas dans les exe exportés).
@@ -96,6 +111,7 @@ Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désorma
 - ✅ Recettes d'activité et de bâtiment éditables via `.tres` (déjà le cas, mais maintenant déclarées via le manifest)
 - ✅ `is_bunker_building: bool` sur `BuildingConfig` (remplace `BUNKER_BUILDING_IDS` hardcodé dans ColonyView)
 - ✅ `synthesizer` : coûts élec lus depuis `synthesizer.tres > inputs.electricity` (constantes `SYNTH_*` mortes supprimées de `GameState`)
+- ✅ `Roster` complètement data-driven : Tribe + Profession en `.tres`, tirage pondéré par rareté, garanties via min_count, sprites par profession
 - `GameState.resources` reste indexé par string (le `ResourceType` est une fiche descriptive accessible via le registry — pas d'indirection par objet, par anti-scope)
 
 ### Mécaniques de gestion à ajouter
@@ -184,6 +200,9 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Pas de save state.** À ajouter quand la boucle de gameplay sera plus solide. Le journal est facilement sérialisable (Array de Dictionary).
 - **Vue avec positions absolues = `await process_frame` initial.** Pour l'instant uniquement MapView. Si une nouvelle vue similaire émerge, reproduire le pattern.
 - **Audit `translations.csv`** : clés vraisemblablement mortes à grep et supprimer si confirmé : `JOB_*` (enum supprimé en 8.1), `DEATH_*` (remplacés par `EVENT_DEATH_*`), `LABEL_FOOD/WOOD/ORE/HEAT/REACTOR/SYNTH_COST/USABLE/ELEC_HEADER` (anciens labels), `LABEL_SYNTH_TOGGLE` (ancien checkbox synthé), `ROLE_GATHERER/FARMER/HERBALIST/LUMBERJACK/MINER` (anciens roles d'activité). Doublons quasi-identiques à fusionner : `POPUP_NEWS_TITLE`/`NEWS_TITLE`, `POPUP_NEWS_PREFIX`/`NEWS_INTRO`, `BTN_ASSIGN`/`BTN_ASSIGN_WORKER`. Sections "à auditer" déjà marquées dans le CSV.
+- **`MapView` duplique la logique de chargement de sprite survivant.** Lignes ~186 charge directement `SURVIVOR_SPRITE_PATH` au lieu de passer par `UiPresentation.survivor_sprite()`. Le bug "sprites flous" qui vient de tomber est exactement ce que cette duplication produit. À factoriser quand on touchera MapView pour autre chose.
+- **`Survivor.sprite_variant` à retirer une fois tous les sprites profession en place.** Aujourd'hui sert de fallback quand `Profession.sprite` est null. Quand le pool sera complet (et avant ça, la décision sur le système de variants pour représentativité — voir one-pager), `sprite_variant` et `SURVIVOR_SPRITE_PATH` deviendront morts.
+- **Signal `targeted_wake_failed` émis dans le vide.** Plus aucun handler ne l'écoute depuis l'extraction de la phase 8. Du coup, échec de recherche ciblée = élec dépensée silencieusement, aucun feedback au joueur. À rebrancher dans `ComputerView` ou dans le journal d'événements.
 ---
 
 ## 🎯 Indicateurs de santé du projet

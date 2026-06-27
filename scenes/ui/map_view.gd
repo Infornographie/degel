@@ -183,10 +183,17 @@ func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
 		_map_container.add_child(icons_row)
 	# Sprite du worker PAR-DESSUS, centré
 	var sprite := TextureRect.new()
-	sprite.texture = load(UiPresentation.SURVIVOR_SPRITE_PATH % s.sprite_variant)
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var prof := Roster.get_profession(s.profession)
+	if prof != null and prof.sprite != null:
+		sprite.texture = prof.sprite
+	else:
+		sprite.texture = load(UiPresentation.SURVIVOR_SPRITE_PATH % s.sprite_variant)
+		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
 	var sprite_size: Vector2 = tex_size * WORKER_SPRITE_SCALE
 	sprite.size = sprite_size
@@ -266,7 +273,7 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 			location_hint = "  " + tr("LABEL_HERE")
 		else:
 			location_hint = "  (" + tr("LABEL_IDLE") + ")"
-		_tile_popup.add_submenu_item("%s (%s)%s" % [s.name, tr(s.profession), location_hint], sub.name)
+		_tile_popup.add_submenu_item("%s (%s)%s" % [s.name, Roster.display_name(s.profession), location_hint], sub.name)
 		any_available = true
 
 	if not any_available and tile.worker_id == -1:

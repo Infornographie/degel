@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://bnfr521fyg1qa"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_pdtlf"]
+[ext_resource type="Texture2D" uid="uid://bwuca2u103woh" path="res://assets/survivors/generic9.png" id="2_p45ak"]
+[ext_resource type="Resource" uid="uid://b3n1rp6bk3yxg" path="res://resources/tribes/practical.tres" id="3_o1s3v"]
+
+[resource]
+script = ExtResource("1_pdtlf")
+id = &"practical_nurse"
+name_key = "PROF_PRACTICAL_NURSE"
+tribe = ExtResource("3_o1s3v")
+rarity = 2
+sprite = ExtResource("2_p45ak")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

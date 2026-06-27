@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://ce206qqqidrac"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_56vi7"]
+[ext_resource type="Texture2D" uid="uid://bvnt6cbffjkoi" path="res://assets/survivors/generic3.png" id="2_5y5es"]
+[ext_resource type="Resource" uid="uid://buujkr787hj41" path="res://resources/tribes/liberal_professions.tres" id="3_x7oj5"]
+
+[resource]
+script = ExtResource("1_56vi7")
+id = &"celebrity_therapist"
+name_key = "PROF_CELEBRITY_THERAPIST"
+tribe = ExtResource("3_x7oj5")
+rarity = 2
+sprite = ExtResource("2_5y5es")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

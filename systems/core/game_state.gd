@@ -18,7 +18,7 @@ signal nightly_deaths(events: Array)   # liste de { name, profession, cause }
 signal famine_started
 signal famine_ended
 signal candidates_changed
-signal targeted_wake_failed(profession: String)
+signal targeted_wake_failed(profession: StringName)
 signal tile_assignment_changed(tile: HexTile)
 signal run_ended(cause: EndCause)
 signal building_assignment_changed(building: Building)
@@ -140,7 +140,7 @@ func wake(id: int) -> bool:
 	s.wake_order = _next_wake_order
 	_next_wake_order += 1
 	survivor_woken.emit(s)
-	log_event("colony", "EVENT_WAKE", [s.name, "tr:" + s.profession])
+	log_event("colony", "EVENT_WAKE", [s.name, "tr:" + Roster.name_key(s.profession)])
 	candidates.erase(s.id)
 	_clean_candidates()
 	resources_changed.emit(resources)
@@ -358,7 +358,7 @@ func _extinguish(victim: Survivor) -> void:
 	}
 	necrology.append(entry)
 	_deaths_this_turn.append(entry)
-	log_event("loss", "EVENT_DEATH_SWITCHED_OFF", [victim.name, "tr:" + victim.profession])
+	log_event("loss", "EVENT_DEATH_SWITCHED_OFF", [victim.name, "tr:" + Roster.name_key(victim.profession)])
 
 func _sleeping_survivors() -> Array[Survivor]:
 	var result: Array[Survivor] = []
@@ -392,7 +392,7 @@ func _resolve_famine_deaths() -> void:
 			}
 			necrology.append(entry)
 			_deaths_this_turn.append(entry)
-			log_event("loss", "EVENT_DEATH_STARVED", [victim.name, "tr:" + victim.profession])
+			log_event("loss", "EVENT_DEATH_STARVED", [victim.name, "tr:" + Roster.name_key(victim.profession)])
 
 # ── HELPERS INTERNES ──
 func _begin_turn() -> void:
@@ -421,28 +421,24 @@ func _refill_candidates() -> void:
 		candidates_changed.emit()
 
 # ── RECHERCHE CIBLÉE ──
-func targeted_wake(profession: String) -> bool:
+func targeted_wake(prof_id: StringName) -> bool:
 	if is_over:
 		return false
 	if _wakes_done_this_turn >= config.wakes_per_turn:
 		return false
 	resources["electricity"] -= config.wake_cost_targeted
-	_electricity_consumed_this_turn += config.wake_cost_targeted
 	_wakes_done_this_turn += 1
-	var s: Survivor = roster.find_sleeping_by_profession(profession)
+	var s: Survivor = roster.find_sleeping_by_profession_id(prof_id)
 	if s == null:
-		targeted_wake_failed.emit(profession)
-		log_event("colony", "EVENT_TARGETED_WAKE_FAIL", ["tr:" + profession])
+		targeted_wake_failed.emit(prof_id)
 		candidates_changed.emit()
 		resources_changed.emit(resources)
 		return false
 	s.awake = true
-	s.wake_order = _next_wake_order
-	_next_wake_order += 1
 	survivor_woken.emit(s)
-	log_event("colony", "EVENT_TARGETED_WAKE_SUCCESS", [s.name, "tr:" + s.profession])
 	candidates.erase(s.id)
 	_clean_candidates()
+	log_event("colony", "EVENT_TARGETED_WAKE_SUCCESS", [s.name, "tr:" + Roster.name_key(s.profession)])
 	resources_changed.emit(resources)
 	return true
 

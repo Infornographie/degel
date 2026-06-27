@@ -186,6 +186,32 @@ PROF_LOBBYIST,Lobbyiste,Lobbyist
 PROF_PRIVATE_PILOT,Pilote privé,Private pilot
 PROF_BANKER,Banquier,Banker
 PROF_CHEF,Chef étoilé,Michelin-starred chef
+PROF_SENATOR,Sénatrice,Senator
+PROF_MEDIA_TYCOON,Magnat des médias,Media tycoon
+PROF_PRIVATE_EQUITY_PARTNER,Associé en private equity,Private equity partner
+PROF_CRYPTO_EVANGELIST,Évangéliste crypto,Crypto evangelist
+PROF_HEART_SURGEON,Cardiochirurgien,Heart surgeon
+PROF_VETERINARIAN,Vétérinaire de luxe,Luxury veterinarian
+PROF_CONCERT_PIANIST,Pianiste de concert,Concert pianist
+PROF_OPERA_DIVA,Diva d'opéra,Opera diva
+PROF_TAX_CONSULTANT,Conseiller fiscal,Tax consultant
+PROF_CELEBRITY_THERAPIST,Thérapeute des stars,Celebrity therapist
+PROF_PERSONAL_TRAINER,Coach sportif personnel,Personal trainer
+PROF_YACHT_CAPTAIN,Capitaine de yacht,Yacht captain
+PROF_ESTATE_MANAGER,Régisseur de domaine,Estate manager
+PROF_SUBSISTENCE_FARMER,Paysanne de subsistance,Subsistence farmer
+PROF_AUTO_MECHANIC,Garagiste,Auto mechanic
+PROF_PRACTICAL_NURSE,Aide-soignante,Practical nurse
+,,
+# ─── TRIBES (debug uniquement invisibles au joueur) ─,,
+TRIBE_RULING_ELITE,Élite dirigeante,Ruling elite
+TRIBE_FINANCE,Finance,Finance
+TRIBE_USELESS_TECH,Tech & médias inutiles,Useless tech
+TRIBE_USEFUL_ELITE,Élite utile,Useful elite
+TRIBE_ARTISTIC_ELITE,Élite artistique,Artistic elite
+TRIBE_LIBERAL_PROFESSIONS,Professions libérales,Liberal professions
+TRIBE_SERVICES,Services aux puissants,Services to the powerful
+TRIBE_PRACTICAL,Techniciens et chanceux,Technicians & lucky ones
 ,,
 # ─── JOBS : LEGACY (à supprimer ?) ─────────────────,,
 JOB_IDLE,Repos,Idle

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://837dglmkp2se"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_rrav1"]
+[ext_resource type="Texture2D" uid="uid://bn2njxeb4w3d6" path="res://assets/survivors/generic5.png" id="2_31t40"]
+[ext_resource type="Resource" uid="uid://b6pmjmlx2ebvx" path="res://resources/tribes/useless_tech.tres" id="3_0017g"]
+
+[resource]
+script = ExtResource("1_rrav1")
+id = &"crypto_evangelist"
+name_key = "PROF_CRYPTO_EVANGELIST"
+tribe = ExtResource("3_0017g")
+rarity = 2
+sprite = ExtResource("2_31t40")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

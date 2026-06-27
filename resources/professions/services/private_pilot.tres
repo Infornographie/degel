@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://bkmnddutgje2c"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_v7uum"]
+[ext_resource type="Texture2D" uid="uid://dye8ab704lsg5" path="res://assets/survivors/generic1.png" id="2_kdije"]
+[ext_resource type="Resource" uid="uid://cdston0co6bmq" path="res://resources/tribes/services.tres" id="3_c236t"]
+
+[resource]
+script = ExtResource("1_v7uum")
+id = &"private_pilot"
+name_key = "PROF_PRIVATE_PILOT"
+tribe = ExtResource("3_c236t")
+rarity = 3
+sprite = ExtResource("2_kdije")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

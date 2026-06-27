@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://by07p7vgri35f"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_txst7"]
+[ext_resource type="Texture2D" uid="uid://cajyifhf2vyaq" path="res://assets/survivors/generic4.png" id="2_8ip76"]
+[ext_resource type="Resource" uid="uid://2awrx83xejs6" path="res://resources/tribes/artistic_elite.tres" id="2_ps3b3"]
+
+[resource]
+script = ExtResource("1_txst7")
+id = &"architect"
+name_key = "PROF_ARCHITECT"
+tribe = ExtResource("2_ps3b3")
+rarity = 3
+sprite = ExtResource("2_8ip76")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

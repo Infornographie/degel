@@ -189,7 +189,7 @@ func _resolve_risky(mult: float) -> void:
 			continue
 		# Inputs (rare pour une activité risquée, mais on respecte le modèle)
 		if not _has_inputs(gs.resources, activity.inputs, 1.0):
-			gs.log_event("colony", "EVENT_HUNT_NO_INPUTS", [s.name, "tr:" + s.profession])
+			gs.log_event("colony", "EVENT_HUNT_NO_INPUTS", [s.name, "tr:" + Roster.name_key(s.profession)])
 			continue
 		for input_name in activity.inputs:
 			gs.resources[input_name] = gs.resources.get(input_name, 0.0) - activity.inputs[input_name]
@@ -199,11 +199,11 @@ func _resolve_risky(mult: float) -> void:
 			var produced: float = _apply_multiplier(raw, mult)
 			if activity.produced_resource != "" and produced > 0.0:
 				gs.resources[activity.produced_resource] = gs.resources.get(activity.produced_resource, 0.0) + produced
-			gs.log_event("colony", "EVENT_HUNT_SUCCESS", [s.name, "tr:" + s.profession])
+			gs.log_event("colony", "EVENT_HUNT_SUCCESS", [s.name, "tr:" + Roster.name_key(s.profession)])
 			if activity.tile_health_delta != 0:
 				tile.health = max(0, tile.health + activity.tile_health_delta)
 		else:
-			gs.log_event("colony", "EVENT_HUNT_FAIL", [s.name, "tr:" + s.profession])
+			gs.log_event("colony", "EVENT_HUNT_FAIL", [s.name, "tr:" + Roster.name_key(s.profession)])
 
 func _resolve_tile_production(mult: float) -> void:
 	# Production sûre + effets de santé. (Les risky sont déjà résolues.)

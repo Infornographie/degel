@@ -4,7 +4,7 @@ class_name Survivor
 
 var id: int
 var name: String
-var profession: String
+var profession: StringName  # id de la profession (cf. Profession.id)
 var awake: bool = false
 var wake_order: int = -1   # ordre de réveil, -1 = pas encore éveillé
 var activity_id: String = ""   # vide = pas d'activité (IDLE)
@@ -14,8 +14,7 @@ var sprite_variant: int = 0
 var work_force: float = 3.0
 
 
-func _init(p_id: int, p_name: String, p_profession: String) -> void:
+func _init(p_id: int, p_name: String, p_profession: StringName) -> void:
 	id = p_id
 	name = p_name
 	profession = p_profession
-	sprite_variant = randi() % 10 # indiquer le nombre de variantes

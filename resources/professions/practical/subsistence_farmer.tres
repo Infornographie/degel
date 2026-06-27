@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://dpvt3sc48c7fq"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_e0tor"]
+[ext_resource type="Texture2D" uid="uid://bwuca2u103woh" path="res://assets/survivors/generic9.png" id="2_xykne"]
+[ext_resource type="Resource" uid="uid://b3n1rp6bk3yxg" path="res://resources/tribes/practical.tres" id="3_x04wx"]
+
+[resource]
+script = ExtResource("1_e0tor")
+id = &"subsistence_farmer"
+name_key = "PROF_SUBSISTENCE_FARMER"
+tribe = ExtResource("3_x04wx")
+rarity = 1
+min_count = 1
+sprite = ExtResource("2_xykne")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

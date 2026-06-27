@@ -70,7 +70,7 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 func _make_candidate_card(s: Survivor) -> Control:
 	var tooltip := "%s\n%s\n\n%s" % [
 		s.name,
-		tr(s.profession),
+		Roster.display_name(s.profession),
 		tr("BTN_WAKE") % GameState.config.wake_cost,
 	]
 	var vbox := VBoxContainer.new()

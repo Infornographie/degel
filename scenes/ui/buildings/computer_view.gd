@@ -36,9 +36,9 @@ func _on_interact_pressed() -> void:
 	search_label.text = tr("LABEL_SEARCH_FOR")
 	search_row.add_child(search_label)
 	var selector := OptionButton.new()
-	for prof in GameState.roster.all_professions():
-		selector.add_item(tr(prof))
-		selector.set_item_metadata(selector.item_count - 1, prof)
+	for prof_id in GameState.roster.all_profession_ids():
+		selector.add_item(Roster.display_name(prof_id))
+		selector.set_item_metadata(selector.item_count - 1, prof_id)
 	search_row.add_child(selector)
 	var search_btn := Button.new()
 	search_btn.text = tr("BTN_SEARCH") % GameState.config.wake_cost_targeted
@@ -46,8 +46,8 @@ func _on_interact_pressed() -> void:
 	search_btn.pressed.connect(func():
 		var idx := selector.selected
 		if idx < 0: return
-		var profession: String = selector.get_item_metadata(idx)
-		GameState.targeted_wake(profession)
+		var prof_id: StringName = selector.get_item_metadata(idx)
+		GameState.targeted_wake(prof_id)
 		dialog.queue_free())
 	search_row.add_child(search_btn)
 	# Bouton "discuter" en placeholder

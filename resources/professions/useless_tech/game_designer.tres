@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="Profession" format=3 uid="uid://bfpgg54u36q2s"]
+
+[ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_5n2o6"]
+[ext_resource type="Texture2D" uid="uid://bn2njxeb4w3d6" path="res://assets/survivors/generic5.png" id="2_ym6gl"]
+[ext_resource type="Resource" uid="uid://b6pmjmlx2ebvx" path="res://resources/tribes/useless_tech.tres" id="3_25e38"]
+
+[resource]
+script = ExtResource("1_5n2o6")
+id = &"game_designer"
+name_key = "PROF_GAME_DESIGNER"
+tribe = ExtResource("3_25e38")
+rarity = 3
+sprite = ExtResource("2_ym6gl")
+metadata/_custom_type_script = "uid://kqw5u10d3rw0"

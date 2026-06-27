@@ -67,7 +67,7 @@ func _add_row(s: Survivor) -> void:
 	var prod := _format_output(s)
 	var tooltip := "%s (%s) — %s — %s" % [
 		s.name,
-		tr(s.profession),
+		Roster.display_name(s.profession),
 		role,
 		location,
 	]

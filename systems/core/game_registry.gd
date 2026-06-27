@@ -14,6 +14,9 @@ const DEFAULT_PATH := "res://resources/game_registry.tres"
 @export var resource_types: Array[ResourceType] = []
 @export var buildings: Array[BuildingConfig] = []
 @export var activities: Array[Activity] = []
+@export var tribes: Array[Tribe] = []
+@export var professions: Array[Profession] = []
+@export var names: Array[String] = []
 
 ## Charge le manifest par défaut. Les Resources étant cachées par Godot,
 ## appeler plusieurs fois ne provoque pas de relecture disque.

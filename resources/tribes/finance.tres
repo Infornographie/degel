@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="Tribe" format=3 uid="uid://cqvhl8mp1nrn6"]
+
+[ext_resource type="Script" uid="uid://mcdpj3jdq3a6" path="res://systems/survivors/tribe.gd" id="1_q3ygs"]
+
+[resource]
+script = ExtResource("1_q3ygs")
+id = &"finance"
+name_key = "TRIBE_FINANCE"
+metadata/_custom_type_script = "uid://mcdpj3jdq3a6"
