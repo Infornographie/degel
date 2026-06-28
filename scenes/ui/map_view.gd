@@ -134,7 +134,7 @@ func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
 		var activity: Activity = GameState.activity_registry.get_activity(s.activity_id)
 		if activity != null and activity.success_rate < 1.0:
 			is_risky = true
-			risky_amount = int(tile.yields.get(s.activity_id, 0.0))
+			risky_amount = GameState.expected_activity_yield(s, tile, activity)
 			risky_resource = activity.produced_resource
 			risky_rate = activity.success_rate
 	var out: Dictionary = GameState.get_survivor_output(s)
@@ -248,7 +248,7 @@ func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
 		_popup_submenus.append(sub)
 
 		for activity in GameState.activity_registry.available_for_tile(tile.type):
-			var yield_val: float = tile.yields.get(activity.id, 0.0)
+			var yield_val: float = GameState.expected_activity_yield(s, tile, activity)
 			var label_text: String
 			if activity.success_rate < 1.0:
 				label_text = "%s  (+%.0f, %d%%)" % [tr(activity.name_key), yield_val, int(activity.success_rate * 100)]

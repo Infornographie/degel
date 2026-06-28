@@ -43,6 +43,7 @@ var current_intensity: int = 1
 
 func _init(p_config: BuildingConfig) -> void:
 	config = p_config
+	@warning_ignore("integer_division")
 	current_intensity = max(1, p_config.max_intensity / 2)
 
 ## Si vrai, le bâtiment a tout ce qu'il faut pour fonctionner ce tour.

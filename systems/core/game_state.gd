@@ -124,6 +124,14 @@ func awake_survivors() -> Array[Survivor]:
 func survivors() -> Array[Survivor]:
 	return roster.survivors
 
+## Production attendue si ce survivant faisait cette activité sur cette tuile.
+## Helper d'UI — passe par TurnResolver pour le calcul unique (famine + bonus prof).
+func expected_activity_yield(s: Survivor, tile: HexTile, activity: Activity) -> int:
+	if s == null or tile == null or activity == null:
+		return 0
+	var raw: float = tile.yields.get(activity.id, 0.0)
+	return int(turn_resolver.compute_activity_yield(raw, s, activity.produced_resource))
+
 # ── ACTIONS JOUEUR ──
 func wake(id: int) -> bool:
 	if is_over:
@@ -370,7 +378,18 @@ func _sleeping_survivors() -> Array[Survivor]:
 # ── PRODUCTION ──
 
 func get_survivor_output(s: Survivor) -> Dictionary:
-	return production_system.get_survivor_output(s, production_multiplier)
+	if s == null or not s.awake or s.tile_key == "" or s.activity_id == "":
+		return {}
+	var tile: HexTile = hex_map.get_tile_by_key(s.tile_key)
+	if tile == null:
+		return {}
+	var activity: Activity = activity_registry.get_activity(s.activity_id)
+	if activity == null or activity.success_rate < 1.0:
+		return {}  # risky : géré séparément par l'overlay
+	var produced: int = expected_activity_yield(s, tile, activity)
+	if produced <= 0:
+		return {}
+	return { activity.produced_resource: produced }
 
 # ── FAMINE ──
 func _resolve_famine_deaths() -> void:

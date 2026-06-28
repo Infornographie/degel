@@ -34,7 +34,6 @@ func _init(game_state) -> void:
 ## NB : la chasse (risky) est exclue. Elle est affichée à part et résolue
 ## séparément en commit.
 func compute_flow() -> Dictionary:
-	var mult: float = gs.production_multiplier
 	# Copie de travail du stock — on n'altère jamais le vrai.
 	var stock: Dictionary = gs.resources.duplicate()
 	# Accumulateurs par ressource.
@@ -57,7 +56,9 @@ func compute_flow() -> Dictionary:
 		# Inputs de l'activité (ex : outils du bûcheron)
 		var has_inputs := _has_inputs(stock, activity.inputs, 1.0)
 		var raw: float = tile.yields.get(s.activity_id, 0.0)
-		var produced: float = _apply_multiplier(raw, mult)
+		var produced: float = compute_activity_yield(raw, s, activity.produced_resource)
+		if produced > 0.0:
+			stock[activity.produced_resource] = stock.get(activity.produced_resource, 0.0) + produced
 		if has_inputs:
 			# Consommer les inputs, produire l'output
 			for input_name in activity.inputs:
@@ -87,8 +88,9 @@ func compute_flow() -> Dictionary:
 			_add(consumption, input_name, needed)
 			stock[input_name] = stock.get(input_name, 0.0) - needed
 		# Outputs produits au prorata ; le reste (1 - factor) est impossible
+		var build_mod: float = _building_output_modifier(b)
 		for output_name in b.config.outputs:
-			var output_full: float = b.config.outputs[output_name] * bmult
+			var output_full: float = round(b.config.outputs[output_name] * bmult * build_mod)
 			var produced: float = output_full * factor
 			if produced > 0.0:
 				_add(production, output_name, produced)
@@ -163,11 +165,10 @@ func gather_risky() -> Array:
 ## Exécute réellement le tour sur gs.resources. Les événements (chasses,
 ## mutations, constructions, morts...) sont enregistrés via gs.log_event().
 func execute_turn() -> void:
-	var mult: float = gs.production_multiplier
 	# 1) RISKY d'abord : le gain peut servir dès ce tour.
-	_resolve_risky(mult)
+	_resolve_risky()
 	# 2) Production des tuiles déterministe.
-	_resolve_tile_production(mult)
+	_resolve_tile_production()
 	# 3) Construction.
 	_resolve_construction()
 	# 4) Bâtiments opérationnels.
@@ -177,7 +178,7 @@ func execute_turn() -> void:
 
 # ── Étapes d'exécution ──
 
-func _resolve_risky(mult: float) -> void:
+func _resolve_risky() -> void:
 	for tile in gs.hex_map.tiles.values():
 		if tile.worker_id == -1:
 			continue
@@ -196,7 +197,7 @@ func _resolve_risky(mult: float) -> void:
 		# Tirage
 		if randf() < activity.success_rate:
 			var raw: float = tile.yields.get(s.activity_id, 0.0)
-			var produced: float = _apply_multiplier(raw, mult)
+			var produced: float = compute_activity_yield(raw, s, activity.produced_resource)
 			if activity.produced_resource != "" and produced > 0.0:
 				gs.resources[activity.produced_resource] = gs.resources.get(activity.produced_resource, 0.0) + produced
 			gs.log_event("colony", "EVENT_HUNT_SUCCESS", [s.name, "tr:" + Roster.name_key(s.profession)])
@@ -205,7 +206,7 @@ func _resolve_risky(mult: float) -> void:
 		else:
 			gs.log_event("colony", "EVENT_HUNT_FAIL", [s.name, "tr:" + Roster.name_key(s.profession)])
 
-func _resolve_tile_production(mult: float) -> void:
+func _resolve_tile_production() -> void:
 	# Production sûre + effets de santé. (Les risky sont déjà résolues.)
 	for tile in gs.hex_map.tiles.values():
 		if tile.worker_id == -1:
@@ -228,10 +229,10 @@ func _resolve_tile_production(mult: float) -> void:
 		if activity.produced_resource == "":
 			continue
 		var raw: float = tile.yields.get(s.activity_id, 0.0)
-		var produced: float = _apply_multiplier(raw, mult)
+		var produced: float = compute_activity_yield(raw, s, activity.produced_resource)
 		if produced > 0.0:
 			gs.resources[activity.produced_resource] = gs.resources.get(activity.produced_resource, 0.0) + produced
-
+	
 func _resolve_construction() -> void:
 	var zone: Building = gs._find_building_by_type("construction_zone")
 	if zone == null or zone.construction_target == "":
@@ -243,7 +244,7 @@ func _resolve_construction() -> void:
 	for wid in zone.worker_ids:
 		var s: Survivor = gs.roster.get_by_id(wid)
 		if s != null and s.awake:
-			total_work += s.work_force
+			total_work += s.work_force * _construction_modifier(s)
 	if total_work <= 0.0:
 		return
 	var work_left: float = total_work
@@ -291,8 +292,9 @@ func _resolve_buildings_operation() -> void:
 		for input_name in b.config.inputs:
 			var needed: float = b.config.inputs[input_name] * bmult * factor
 			gs.resources[input_name] = gs.resources.get(input_name, 0.0) - needed
+		var build_mod: float = _building_output_modifier(b)
 		for output_name in b.config.outputs:
-			var produced: float = b.config.outputs[output_name] * bmult * factor
+			var produced: float = round(b.config.outputs[output_name] * bmult * build_mod) * factor
 			gs.resources[output_name] = gs.resources.get(output_name, 0.0) + produced
 
 func _resolve_tile_mutations() -> void:
@@ -354,7 +356,7 @@ func _simulate_construction(stock: Dictionary, consumption: Dictionary) -> void:
 	for wid in zone.worker_ids:
 		var s: Survivor = gs.roster.get_by_id(wid)
 		if s != null and s.awake:
-			work += s.work_force
+			work += s.work_force * _construction_modifier(s)
 	if work <= 0.0:
 		return
 	var work_left: float = work
@@ -386,6 +388,55 @@ func _apply_multiplier(raw: float, mult: float) -> float:
 	if raw >= 1.0 and result < 1.0:
 		result = 1.0
 	return result
+
+## Calcul unique de la production d'un survivant pour une activité donnée.
+## Combine famine + modifier profession. N'applique PAS le success_rate.
+## Tous les call sites (résolution, prévisualisation, affichage carte) passent ici.
+func compute_activity_yield(raw: float, s: Survivor, produced_resource: String) -> float:
+	var produced: float = _apply_multiplier(raw, gs.production_multiplier)
+	produced = round(produced * _activity_modifier(s, produced_resource))
+	return produced
+
+# ──────────────────────────────────────────────────────────────────────────
+#  MODIFIERS PROFESSION (helpers centralisés — une logique, un endroit)
+# ──────────────────────────────────────────────────────────────────────────
+
+## Modifier d'activité pour le survivant assigné à cette tuile, sur la ressource
+## produite par l'activité. Renvoie 1.0 si pas de profession ou pas de match.
+func _activity_modifier(s: Survivor, resource_name: String) -> float:
+	if s == null:
+		return 1.0
+	var prof: Profession = Roster.get_profession(s.profession)
+	if prof == null:
+		return 1.0
+	return prof.activity_modifier_for(StringName(resource_name))
+
+## Modifier de construction d'un survivant donné.
+func _construction_modifier(s: Survivor) -> float:
+	if s == null:
+		return 1.0
+	var prof: Profession = Roster.get_profession(s.profession)
+	if prof == null:
+		return 1.0
+	return prof.construction_modifier_value()
+
+## Modifier de bâtiment, basé sur le premier worker (1 worker/bâtiment pour
+## l'instant). Matche le filtre prof contre input ∪ output du bâtiment.
+func _building_output_modifier(b: Building) -> float:
+	if b.worker_ids.is_empty():
+		return 1.0
+	var s: Survivor = gs.roster.get_by_id(b.worker_ids[0])
+	if s == null:
+		return 1.0
+	var prof: Profession = Roster.get_profession(s.profession)
+	if prof == null:
+		return 1.0
+	var resources_in_play: Array = []
+	for r in b.config.inputs.keys():
+		resources_in_play.append(StringName(r))
+	for r in b.config.outputs.keys():
+		resources_in_play.append(StringName(r))
+	return prof.building_modifier_for(resources_in_play)
 
 func _add(dict: Dictionary, key: String, amount: float) -> void:
 	if amount == 0.0:
