@@ -106,6 +106,8 @@ Deux mécaniques actuelles le portent déjà :
 
 Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désormais **sans toucher au code** : on crée un `.tres` et on le glisse dans `res://resources/game_registry.tres` via l'inspecteur. Les trois registries (`ResourceRegistry`, `BuildingRegistry`, `ActivityRegistry`) lisent ce manifest central au démarrage et exposent leur API habituelle.
 
+- ✅ **Bonus/malus de production par profession.** Trois axes sur `Profession.tres` : `activity_modifier`, `construction_modifier`, `building_modifier`. Filtre commun `modifier_resource_filter: Array[StringName]` qui matche input ∪ output côté bâtiment et la ressource produite côté activité. Trois helpers privés dans `TurnResolver` (`_activity_modifier`, `_construction_modifier`, `_building_output_modifier`). Arrondi `round`. Système accepte malus (futur : fatigue), contenu actuel = que des bonus thématiques. Subsistance_farmer testé : +20% en food, visible partout.
+- ✅ **Calcul de yield centralisé.** `TurnResolver.compute_activity_yield(raw, s, resource)` est la source unique pour la production d'activité (famine + modifier profession). Appelée par les 3 sites de résolution interne et exposée via `GameState.expected_activity_yield(s, tile, activity)` pour l'UI (popup d'assignation, icônes de carte, overlay risky). `GameState.get_survivor_output()` passe par là aussi désormais. Sans cette centralisation, le modifier profession apparaissait dans la ProductionView mais pas sur la carte — bug classique "l'UI ment au joueur" résolu.
 - ✅ **Intensité de bâtiment.** Régime sélectionnable 1→N par bâtiment via slider (défaut à `max(1, max_intensity / 2)`). Champ `max_intensity` sur `BuildingConfig`, instance porte `current_intensity`. Multiplie inputs ET outputs au prorata, helper `TurnResolver._building_multiplier()` factorise (niveau × intensité). Campfire passé à 1 wood → 1 heat unitaire, max_intensity = 5.
 - ✅ `ResourceType` + `ResourceRegistry` (champs : `id`, `name_key`, `icon`, `stackable`, `max_stock`, `display_order`)
 - ✅ Manifest central `GameRegistry` regroupant ressources, bâtiments, activités
@@ -165,7 +167,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 
 - **Travail comme état, pas identité.** Lassitude par répétition fait baisser l'efficacité. Caractéristiques acquises = traits humains, pas métiers. Bâtiments/techs débloquent des roulements automatisés.
 - **Bunker computer comme voix narrative.** Interface de tutoriel et de guidage qui parle au joueur.
-
+- **UI d'assignation bidirectionnelle façon Colonization** (polish prioritaire). Quand on clique sur une case : voir tous les personnages avec leur localisation actuelle et leur production sur cette case spécifique. Quand on clique sur un personnage : voir toutes les cases avec leur meilleure production possible si on le déplaçait. Révèle visuellement le système de bonus profession qui vient d'être mis en place, et conditionne sa lisibilité côté joueur.
 ---
 
 ## 🐛 Bugs à diagnostiquer
@@ -174,7 +176,6 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 
 - **Bug d'affichage `usable` électricité.** Le label affiche "synth: -3" mais l'usable ne reflète pas la déduction. Hypothèse : `synth.active` est true sans worker, ou conso pas déduite au bon moment dans TurnResolver.
 - **Doublon de colonne "impossible"** dans `ProductionView._make_row` : la colonne 4 est ajoutée deux fois (FIXME dans le code). Visuel à diagnostiquer.
-
 ---
 
 ## 🏗 Dettes architecturales
@@ -205,6 +206,8 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **`MapView` duplique la logique de chargement de sprite survivant.** Lignes ~186 charge directement `SURVIVOR_SPRITE_PATH` au lieu de passer par `UiPresentation.survivor_sprite()`. Le bug "sprites flous" qui vient de tomber est exactement ce que cette duplication produit. À factoriser quand on touchera MapView pour autre chose.
 - **`Survivor.sprite_variant` à retirer une fois tous les sprites profession en place.** Aujourd'hui sert de fallback quand `Profession.sprite` est null. Quand le pool sera complet (et avant ça, la décision sur le système de variants pour représentativité — voir one-pager), `sprite_variant` et `SURVIVOR_SPRITE_PATH` deviendront morts.
 - **Signal `targeted_wake_failed` émis dans le vide.** Plus aucun handler ne l'écoute depuis l'extraction de la phase 8. Du coup, échec de recherche ciblée = élec dépensée silencieusement, aucun feedback au joueur. À rebrancher dans `ComputerView` ou dans le journal d'événements.
+- **Affichage des bonus profession dans l'UI d'assignation.** Mécanique en place et fonctionnelle, mais le joueur voit "+4 food" sans savoir que c'est un bonus profession (vs. "+3 de base"). À révéler via la prochaine refonte UI d'assignation bidirectionnelle (voir backlog "Refonte sélection sur tuile façon Colonization").
+- **Erreur Godot `_push_unhandled_input_internal: !is_inside_tree()`.** Warning interne récurrent, probablement lié à un popup qui se `queue_free` pendant qu'il a encore le focus. Pas reproductible en pattern clair pour l'instant, à surveiller.
 ---
 
 ## 🎯 Indicateurs de santé du projet

@@ -12,4 +12,7 @@ tribe = ExtResource("3_x04wx")
 rarity = 1
 min_count = 1
 sprite = ExtResource("2_xykne")
+activity_modifier = 1.2
+building_modifier = 1.2
+modifier_resource_filter = Array[StringName]([&"food", &"meal"])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"
