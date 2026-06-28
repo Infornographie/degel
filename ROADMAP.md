@@ -95,7 +95,7 @@ Deux mécaniques actuelles le portent déjà :
 
 1. **Modèle Activity contextuel** : on n'est pas "bûcheron", on *fait du bûcheronnage en forêt ce tour-ci*. L'identité est dans le devenir, pas dans le métier figé.
 2. **Tension tech → reconversion** (à concevoir) : la communauté est tirée vers la reconstruction de l'ancien monde, bute sur des impossibilités, doit se réinventer.
-
+- **Bonus/malus de production par profession** (prochaine séance). Que des bonus dans le contenu pour l'instant (base = les dépassés), mais le système gère bonus *et* malus pour accueillir la fatigue à venir. Trois axes : activité, construction, opération bâtiment. Filtre optionnel par ressource produite (cuistot = food). Arrondi `round`. Crochets posés en Phase 9.
 À approfondir : lassitude par répétition (rotation organique, pas réglementaire), chaînes de production qui ne peuvent pas se boucler complètement (signature thématique), caractéristiques humaines acquises (pas des métiers, des traits).
 
 ---
@@ -106,6 +106,7 @@ Deux mécaniques actuelles le portent déjà :
 
 Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désormais **sans toucher au code** : on crée un `.tres` et on le glisse dans `res://resources/game_registry.tres` via l'inspecteur. Les trois registries (`ResourceRegistry`, `BuildingRegistry`, `ActivityRegistry`) lisent ce manifest central au démarrage et exposent leur API habituelle.
 
+- ✅ **Intensité de bâtiment.** Régime sélectionnable 1→N par bâtiment via slider (défaut à `max(1, max_intensity / 2)`). Champ `max_intensity` sur `BuildingConfig`, instance porte `current_intensity`. Multiplie inputs ET outputs au prorata, helper `TurnResolver._building_multiplier()` factorise (niveau × intensité). Campfire passé à 1 wood → 1 heat unitaire, max_intensity = 5.
 - ✅ `ResourceType` + `ResourceRegistry` (champs : `id`, `name_key`, `icon`, `stackable`, `max_stock`, `display_order`)
 - ✅ Manifest central `GameRegistry` regroupant ressources, bâtiments, activités
 - ✅ Recettes d'activité et de bâtiment éditables via `.tres` (déjà le cas, mais maintenant déclarées via le manifest)
@@ -187,6 +188,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Layout colony hardcodé** (`COLONY_SLOTS=12`, `STARTER_SLOTS`) dans `ColonyView`. À déplacer dans une Resource configurable quand l'équilibrage l'exigera.
 - **Ordre des bâtiments dans `_resolve_buildings_operation`** : premier servi sur les inputs partagés. Acceptable, à raffiner si gênant.
 - **UI/loc encore branchées sur strings hardcodées — migration en cours.** `GameState.resources["food"]` reste la clé d'accès (par design). Côté affichage : `UiPresentation.resource()`, `UiPresentation.resource_icon()`, `ResourcesBar` et `ProductionView` migrés sur `ResourceRegistry`. Restent à migrer au fil des touches : `InfosSection` (affichage électricité/heat) et autres callsites qui hardcodent encore des noms de ressources.
+- **Signal `building_assignment_changed` au nom trop étroit.** Sert désormais à refresh sur : assignation, toggle synth, changement d'intensité. À renommer (`building_settings_changed` ou `building_state_changed`) en cohérence avec les dettes déjà nommées sur `nightly_deaths` et `construction_started`.
 ---
 
 ## 🧹 Dettes mineures

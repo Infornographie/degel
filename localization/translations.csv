@@ -127,6 +127,7 @@ BUILDING_CAMPFIRE,Feu de camp,Campfire
 BUILDING_TOOL_WORKSHOP,Atelier d'outils,Tool Workshop
 BUILDING_CANTEEN,Cantine,Canteen
 BUILDING_CANTEEN_DESC,Permet aux survivants de préparer des repas.,Allows survivors to prepare meals.
+LABEL_INTENSITY,Intensité,Intensity
 ,,
 # ─── BUILDINGS : FAMILLES ──────────────────────────,,
 BUILDING_FAMILY_TRANSFORMATION,⚙ transformation,⚙ transformation

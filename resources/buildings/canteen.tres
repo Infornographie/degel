@@ -20,6 +20,7 @@ inputs = Dictionary[String, float]({
 outputs = Dictionary[String, float]({
 "meal": 1.0
 })
+max_intensity = 5
 view_scene = ExtResource("2_86ie6")
 worker_role_key = "ROLE_COOK"
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

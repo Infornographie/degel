@@ -9,6 +9,7 @@ id = "construction_zone"
 name_key = "BUILDING_CONSTRUCTION_ZONE"
 family = 1
 is_starter = true
+max_intensity = 2
 view_scene = ExtResource("2_ijisv")
 worker_role_key = "ROLE_BUILDER"
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

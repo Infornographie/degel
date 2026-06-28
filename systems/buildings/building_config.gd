@@ -43,6 +43,10 @@ enum Family {
 @export var can_run_on_electricity: bool = false
 ## Coût en électricité par tour si tourne sans colon (ou en plus).
 @export var electricity_cost: float = 0.0
+## Régime maximum sélectionnable par le joueur. 1 = pas de réglage (rétrocompat).
+## Les inputs/outputs ci-dessus sont les valeurs *unitaires*, multipliées par
+## l'intensité courante à la résolution.
+@export var max_intensity: int = 1
 
 @export_group("Upgrades")
 ## Niveau maximum atteignable. 1 = pas d'amélioration possible.

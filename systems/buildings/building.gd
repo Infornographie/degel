@@ -37,8 +37,13 @@ var slot_index: int = -1
 ## Si false, le bâtiment opérationnel ne tourne pas (mais existe).
 var active: bool = true
 
+## Intensité courante du bâtiment. Initialisée à max(1, max_intensity / 2).
+## Modifie inputs ET outputs au prorata à la résolution.
+var current_intensity: int = 1
+
 func _init(p_config: BuildingConfig) -> void:
 	config = p_config
+	current_intensity = max(1, p_config.max_intensity / 2)
 
 ## Si vrai, le bâtiment a tout ce qu'il faut pour fonctionner ce tour.
 func can_operate() -> bool:

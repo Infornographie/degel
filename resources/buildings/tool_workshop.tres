@@ -13,12 +13,13 @@ build_cost = Dictionary[String, float]({
 })
 build_order = Array[String](["ore", "wood"])
 inputs = Dictionary[String, float]({
-"ore": 3.0,
-"wood": 3.0
+"ore": 1.0,
+"wood": 1.0
 })
 outputs = Dictionary[String, float]({
-"tools": 3.0
+"tools": 1.0
 })
+max_intensity = 5
 view_scene = ExtResource("2_h7522")
 worker_role_key = "ROLE_TOOLMAKER"
 metadata/_custom_type_script = "uid://djgwy70yusm4w"

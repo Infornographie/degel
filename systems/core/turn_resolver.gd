@@ -78,7 +78,7 @@ func compute_flow() -> Dictionary:
 	for b in gs.buildings:
 		if not _building_operates(b):
 			continue
-		var bmult: float = b.level_multiplier()
+		var bmult: float = _building_multiplier(b)
 		var factor: float = _operation_factor(b, stock, bmult)
 		# Inputs consommés au prorata
 		for input_name in b.config.inputs:
@@ -284,7 +284,7 @@ func _resolve_buildings_operation() -> void:
 	for b in gs.buildings:
 		if not _building_operates(b):
 			continue
-		var bmult: float = b.level_multiplier()
+		var bmult: float = _building_multiplier(b)
 		var factor: float = _operation_factor(b, gs.resources, bmult)
 		if factor <= 0.0:
 			continue
@@ -317,6 +317,11 @@ func _building_operates(b: Building) -> bool:
 	if not b.can_operate():
 		return false
 	return true
+
+## Multiplicateur effectif d'un bâtiment : niveau × intensité.
+## Helper partagé pour éviter de l'oublier à un des call sites.
+func _building_multiplier(b: Building) -> float:
+	return b.level_multiplier() * float(b.current_intensity)
 
 ## Facteur d'opération d'un bâtiment : fraction de cycle réalisable selon les
 ## inputs disponibles dans `stock`. 1.0 = plein régime, 0.0 = rien.

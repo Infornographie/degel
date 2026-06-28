@@ -113,14 +113,39 @@ func _build_operational(vbox: VBoxContainer) -> void:
 	assign_btn.pressed.connect(func():
 		UiPresentation.open_building_popup(self, _building, get_global_mouse_position()))
 	vbox.add_child(assign_btn)
+	# Slider d'intensité si le bâtiment en a un
+	if _building.config.max_intensity > 1:
+		var intensity_box := VBoxContainer.new()
+		intensity_box.add_theme_constant_override("separation", 2)
+		vbox.add_child(intensity_box)
+		var intensity_label := Label.new()
+		intensity_label.text = tr("LABEL_INTENSITY") + ": %d / %d" % [
+			_building.current_intensity, _building.config.max_intensity]
+		intensity_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		intensity_label.add_theme_font_size_override("font_size", 10)
+		intensity_box.add_child(intensity_label)
+		var slider := HSlider.new()
+		slider.min_value = 1
+		slider.max_value = _building.config.max_intensity
+		slider.step = 1
+		slider.value = _building.current_intensity
+		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var bid := _building.instance_id
+		slider.value_changed.connect(func(v: float):
+			var b := GameState._find_building_by_instance(bid)
+			if b != null:
+				b.current_intensity = int(v)
+				GameState.building_assignment_changed.emit())
+		intensity_box.add_child(slider)
 	# Inputs / outputs
 	if not _building.config.inputs.is_empty() or not _building.config.outputs.is_empty():
 		var io_row := HBoxContainer.new()
 		io_row.add_theme_constant_override("separation", 2)
 		io_row.alignment = BoxContainer.ALIGNMENT_CENTER
 		vbox.add_child(io_row)
+		var intensity: int = _building.current_intensity
 		for resource_name in _building.config.inputs:
-			var amt: int = int(_building.config.inputs[resource_name])
+			var amt: int = int(_building.config.inputs[resource_name] * intensity)
 			for i in amt:
 				io_row.add_child(UiPresentation.resource_icon(resource_name, IO_ICON_SIZE))
 		if not _building.config.inputs.is_empty() and not _building.config.outputs.is_empty():
@@ -129,6 +154,6 @@ func _build_operational(vbox: VBoxContainer) -> void:
 			arrow.add_theme_font_size_override("font_size", 12)
 			io_row.add_child(arrow)
 		for resource_name in _building.config.outputs:
-			var amt: int = int(_building.config.outputs[resource_name])
+			var amt: int = int(_building.config.outputs[resource_name] * intensity)
 			for i in amt:
 				io_row.add_child(UiPresentation.resource_icon(resource_name, IO_ICON_SIZE))

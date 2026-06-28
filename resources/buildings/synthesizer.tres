@@ -15,6 +15,7 @@ workers_required = 0
 workers_max = 0
 can_run_on_electricity = true
 electricity_cost = 3.0
+max_intensity = 2
 view_scene = ExtResource("2_rhomy")
 is_bunker_building = true
 worker_role_key = "ROLE_SYNTH_OPERATOR"
