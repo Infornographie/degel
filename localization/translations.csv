@@ -214,6 +214,23 @@ TRIBE_LIBERAL_PROFESSIONS,Professions libérales,Liberal professions
 TRIBE_SERVICES,Services aux puissants,Services to the powerful
 TRIBE_PRACTICAL,Techniciens et chanceux,Technicians & lucky ones
 ,,
+# ─── TRAITS ────────────────────────────────────────,,
+TRAIT_NORMAL,Normal,Normal
+TRAIT_NORMAL_DESC,État ordinaire. Disponible.,Ordinary state. Available.
+TRAIT_TIRED,Lassé,Weary
+TRAIT_TIRED_DESC,"Lassé par la répétition. Le geste devient mécanique et l'efficacité baisse.","Worn out by repetition. The gesture turns mechanical and efficiency drops."
+TRAIT_FAMISHED,Affamé,Famished
+TRAIT_FAMISHED_DESC,"Ventre vide. Le corps ne suit plus, chaque geste demande un effort.","Empty stomach. The body lags, every gesture costs."
+TRAIT_FOOD_SAVVY,Sait nourrir,Food-wise
+TRAIT_FOOD_SAVVY_DESC,"Comprend la nourriture, ses gestes et ses outils. À sa main.","Knows food, its gestures and its tools. In their element."
+TRAIT_OUT_OF_TOUCH,Déconnecté,Out of touch
+TRAIT_OUT_OF_TOUCH_DESC,"L'ancien monde lui collait à la peau. Il faut tout réapprendre, sans les béquilles.","The old world still clings to them. Everything must be relearned, without the old crutches."
+TRAIT_HANDY,Manuel,Handy
+TRAIT_HANDY_DESC,"Sait travailler de ses mains. Le concret lui parle mieux que les concepts.","Knows how to work with their hands. The concrete speaks louder than the abstract."
+TRAIT_FIRST_AWAKENED,Premier éveillé,First awakened
+TRAIT_FIRST_AWAKENED_DESC,"Premier à ouvrir les yeux dans ce monde sans nous. Ce silence, iel le porte.","First to open their eyes in this world without us. That silence, they carry it."
+,,
+
 # ─── JOBS : LEGACY (à supprimer ?) ─────────────────,,
 JOB_IDLE,Repos,Idle
 JOB_FARMER,Cultiver,Farmer

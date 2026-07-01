@@ -145,6 +145,8 @@ func wake(id: int) -> bool:
 	s.awake = true
 	_apply_initial_traits(s)
 	s.wake_order = _next_wake_order
+	if _next_wake_order == 0:
+		_apply_first_awakened(s)
 	_next_wake_order += 1
 	survivor_woken.emit(s)
 	log_event("colony", "EVENT_WAKE", [s.name, "tr:" + Roster.name_key(s.profession)])
@@ -454,6 +456,10 @@ func targeted_wake(prof_id: StringName) -> bool:
 		return false
 	s.awake = true
 	_apply_initial_traits(s)
+	if _next_wake_order == 0:
+		_apply_first_awakened(s)
+		s.wake_order = _next_wake_order
+		_next_wake_order += 1
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()
@@ -586,3 +592,10 @@ func _apply_famished() -> void:
 func _clear_famished() -> void:
 	for s in awake_survivors():
 		s.remove_trait(&"famished")
+
+## Pose le trait `first_awakened` sur le tout premier réveillé de la partie.
+## Marqueur narratif permanent (catégorie EVENT).
+func _apply_first_awakened(s: Survivor) -> void:
+	var t: TraitConfig = _find_trait(&"first_awakened")
+	if t != null:
+		s.add_trait(t)
