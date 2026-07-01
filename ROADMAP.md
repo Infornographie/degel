@@ -168,6 +168,21 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Travail comme état, pas identité.** Lassitude par répétition fait baisser l'efficacité. Caractéristiques acquises = traits humains, pas métiers. Bâtiments/techs débloquent des roulements automatisés.
 - **Bunker computer comme voix narrative.** Interface de tutoriel et de guidage qui parle au joueur.
 - **UI d'assignation bidirectionnelle façon Colonization** (polish prioritaire). Quand on clique sur une case : voir tous les personnages avec leur localisation actuelle et leur production sur cette case spécifique. Quand on clique sur un personnage : voir toutes les cases avec leur meilleure production possible si on le déplaçait. Révèle visuellement le système de bonus profession qui vient d'être mis en place, et conditionne sa lisibilité côté joueur.
+- **Système de traits unifié** (design clos, prochaine session = code). Un modèle `TraitConfig.tres` unique porte les modifiers (activity / construction / building + filtre ressource) + métadonnées d'affichage (name_key, description_key, icon, color_hint sémantique) + lifecycle (duration_turns, -1 = permanent). Champ `category: { STATE, NATURE, EVENT }` qui guide l'UI sans changer la résolution.
+
+  Stockage sur `Survivor` : `traits: Array[TraitConfig]` (un par id maximum, pas de stacking — re-pose = reset de durée) + `trait_durations: Dictionary` (id → tours restants). Plus `fatigue_streak: int` et `last_activity_id: StringName` pour la mécanique de fatigue.
+
+  Calcul des modifiers : composition multiplicative en itérant sur `s.traits`. `_activity_modifier`, `_construction_modifier`, `_building_output_modifier` deviennent les seuls call sites, déjà centralisés via la phase précédente.
+
+  Migration depuis Profession : les 4 champs de modifiers quittent `Profession`, remplacés par `initial_traits: Array[TraitConfig]`. `Tribe` ne porte aucun trait — elle reste une étiquette narrative pure pour les events futurs (accessible via `prof.tribe`).
+
+  Famine migrée : `production_multiplier` global de GameState supprimé, remplacé par un trait `famished` (STATE, -20%) posé sur tous les éveillés pendant la famine. `_apply_multiplier` probablement supprimé en même temps.
+
+  Premier set de traits à coder : `normal` (STATE défaut, neutre), `tired` (STATE, -20%, posé après 3 tours sur la même activité), `famished` (STATE, -20%), `food_savvy` (NATURE), `out_of_touch` (NATURE), `handy` (NATURE), `first_awakened` (EVENT, narratif pur). D'autres au fil de l'intégration des professions.
+
+  Pose au réveil : trait `normal` + boucle sur `prof.initial_traits`. Professions sans NATURE initial = juste `normal` (caractérisation différée). `out_of_touch` posable en bouche-trou sur les métiers de l'ancien monde quand le narratif n'est pas écrit.
+- **Tooltips cliquables à hyperliens** (long terme). Inspiration Pathfinder/Owlcat : hover sur un mot-clé ouvre une popup avec termes soulignés ; clic sur un terme ouvre une autre popup. Pas avant que le contenu narratif (events + traits + professions multiples) ne crée une vraie densité de références croisées. Côté préparation : descriptions en `RichTextLabel` + BBCode dès le système de traits, pour que le passage soit indolore.
+- **Traits de communauté** (idée parquée). Plutôt qu'un trait posé identiquement sur chaque survivant, un trait porté par la communauté entière. À creuser quand d'autres cas d'usage émergeront (politique collective ? résultat d'event ? saison ?). Pas avant.
 ---
 
 ## 🐛 Bugs à diagnostiquer
@@ -190,6 +205,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Ordre des bâtiments dans `_resolve_buildings_operation`** : premier servi sur les inputs partagés. Acceptable, à raffiner si gênant.
 - **UI/loc encore branchées sur strings hardcodées — migration en cours.** `GameState.resources["food"]` reste la clé d'accès (par design). Côté affichage : `UiPresentation.resource()`, `UiPresentation.resource_icon()`, `ResourcesBar` et `ProductionView` migrés sur `ResourceRegistry`. Restent à migrer au fil des touches : `InfosSection` (affichage électricité/heat) et autres callsites qui hardcodent encore des noms de ressources.
 - **Signal `building_assignment_changed` au nom trop étroit.** Sert désormais à refresh sur : assignation, toggle synth, changement d'intensité. À renommer (`building_settings_changed` ou `building_state_changed`) en cohérence avec les dettes déjà nommées sur `nightly_deaths` et `construction_started`.
+- **`_apply_multiplier` dans TurnResolver à supprimer après migration famine.** Devient inutile quand la famine passera en trait `famished` — plus aucun multiplicateur global. À vérifier à ce moment-là qu'aucun autre call site ne s'y accroche.
 ---
 
 ## 🧹 Dettes mineures
