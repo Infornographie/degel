@@ -384,22 +384,11 @@ func _build_order(target: Building) -> Array:
 		order = target.config.build_cost.keys()
 	return order
 
-## Applique le multiplicateur de famine en préservant "au moins 1 si raw ≥ 1".
-func _apply_multiplier(raw: float, mult: float) -> float:
-	if mult >= 1.0:
-		return raw
-	var result: float = floor(raw * mult)
-	if raw >= 1.0 and result < 1.0:
-		result = 1.0
-	return result
-
 ## Calcul unique de la production d'un survivant pour une activité donnée.
-## Combine famine + modifier profession. N'applique PAS le success_rate.
-## Tous les call sites (résolution, prévisualisation, affichage carte) passent ici.
+## Le multiplicateur agrégé des traits (dont famished le cas échéant) est
+## calculé par `_activity_modifier`. Ne s'applique PAS le success_rate.
 func compute_activity_yield(raw: float, s: Survivor, produced_resource: String) -> float:
-	var produced: float = _apply_multiplier(raw, gs.production_multiplier)
-	produced = round(produced * _activity_modifier(s, produced_resource))
-	return produced
+	return round(raw * _activity_modifier(s, produced_resource))
 
 # ──────────────────────────────────────────────────────────────────────────
 #  MODIFIERS TRAITS (helpers centralisés — une logique, un endroit)

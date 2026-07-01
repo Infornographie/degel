@@ -79,8 +79,6 @@ var _next_wake_order: int = 0
 # --- Famine ---
 var famine_turns: int = 0
 var _deaths_triggered: bool = false
-var production_multiplier: float = 1.0
-const FAMINE_PROD_MULTIPLIER: float = 0.8
 
 var roster: Roster
 var hex_map: HexMap
@@ -125,7 +123,7 @@ func survivors() -> Array[Survivor]:
 	return roster.survivors
 
 ## Production attendue si ce survivant faisait cette activité sur cette tuile.
-## Helper d'UI — passe par TurnResolver pour le calcul unique (famine + bonus prof).
+## Helper d'UI — passe par TurnResolver pour le calcul unique (traits agrégés).
 func expected_activity_yield(s: Survivor, tile: HexTile, activity: Activity) -> int:
 	if s == null or tile == null or activity == null:
 		return 0
@@ -287,13 +285,13 @@ func advance_turn() -> void:
 		if was_in_famine:
 			famine_turns = 0
 			_deaths_triggered = false
-			production_multiplier = 1.0
+			_clear_famished()
 			famine_ended.emit()
 			log_event("system", "EVENT_FAMINE_ENDED", [])
 	else:
 		resources["food"] = 0.0
 		famine_turns += 1
-		production_multiplier = FAMINE_PROD_MULTIPLIER
+		_apply_famished()
 		if not was_in_famine:
 			famine_started.emit()
 			log_event("system", "EVENT_FAMINE_STARTED", [])
@@ -573,3 +571,18 @@ func _find_trait(id: StringName) -> TraitConfig:
 		if t.id == id:
 			return t
 	return null
+
+## Pose le trait `famished` sur tous les éveillés. Idempotent.
+## Appelé chaque tour en famine — add_trait ne re-pose pas un trait présent.
+func _apply_famished() -> void:
+	var famished_trait: TraitConfig = _find_trait(&"famished")
+	if famished_trait == null:
+		return
+	for s in awake_survivors():
+		s.add_trait(famished_trait)
+
+## Retire le trait `famished` de tous les éveillés. Ceux qui ne l'ont pas sont
+## ignorés silencieusement par remove_trait.
+func _clear_famished() -> void:
+	for s in awake_survivors():
+		s.remove_trait(&"famished")

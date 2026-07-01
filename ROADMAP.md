@@ -95,7 +95,9 @@ Migration du système de bonus/malus vers un modèle de traits unifié : STATE (
 - **`GameState.wake()` et `targeted_wake()`** : posent le trait `normal` + les `initial_traits` de la profession après réveil, via `_apply_initial_traits()`.
 - **`GameRegistry`** étendu : nouveau champ `traits: Array[TraitConfig]`.
 - **Six traits initiaux créés** : `normal`, `tired`, `famished` (posé mais pas encore utilisé par la famine), `food_savvy`, `out_of_touch`, `handy`.
+- **Famine migrée vers le trait `famished`.** La variable globale `production_multiplier` de `GameState` et la constante `FAMINE_PROD_MULTIPLIER` supprimées, ainsi que `TurnResolver._apply_multiplier`. `compute_activity_yield` se réduit à `round(raw * _activity_modifier(...))`. Deux helpers `_apply_famished()` / `_clear_famished()` sur `GameState` posent/retirent le trait sur tous les éveillés. Effet mineur d'ajustement : `round` remplace `floor + "au moins 1"` — la prod famine peut différer de 1 sur certaines valeurs (raw=2 : 2 au lieu de 1). Comportement à ajuster si le gameplay l'exige.
 
+Effet bonus observé : le passage famine → fatigue à la fin d'une famine fonctionne (le compteur `fatigue_streak` a continué à monter pendant la famine, `_resolve_fatigue` repose `tired` au tour suivant si le seuil est encore atteint). Confirme que traits STATE et fatigue interagissent proprement.
 Test validé : subsistance_farmer avec trait `food_savvy` produit +4 en cueillette forêt (au lieu de +3). Le trait `tired` se pose et se retire correctement avec la répétition/changement d'activité.
 
 ### Build & livraison
@@ -208,6 +210,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 
 - **Bug d'affichage `usable` électricité.** Le label affiche "synth: -3" mais l'usable ne reflète pas la déduction. Hypothèse : `synth.active` est true sans worker, ou conso pas déduite au bon moment dans TurnResolver.
 - **Doublon de colonne "impossible"** dans `ProductionView._make_row` : la colonne 4 est ajoutée deux fois (FIXME dans le code). Visuel à diagnostiquer.
+- **Invariant "toujours un STATE actif" potentiellement cassé après retrait de STATE.** `_clear_famished()` retire `famished` sans reposer `normal`. Si le survivant n'était pas fatigué avant, il se retrouve sans STATE. Même préoccupation à surveiller pour tout futur retrait de STATE hors du système de durée (qui, lui, repose `normal` correctement via `_resolve_trait_durations`). À vérifier visuellement dès que l'UI affichera les STATE. Fix pressenti : reposer `normal` côté appelant après tout `remove_trait` de STATE, ou centraliser dans `Survivor.remove_trait` avec une dépendance au registry (moins propre).
 ---
 
 ## 🏗 Dettes architecturales
