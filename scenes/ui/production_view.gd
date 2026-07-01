@@ -145,11 +145,6 @@ func _make_row(type: ResourceType, production: float, consumption: float, imposs
 		row.add_child(_make_icon_column(resource_name, total_impossible, "crossed"))
 	else:
 		row.add_child(_make_empty_column())
-	# Colonne 4 : impossible (FIXME — doublon hérité de main_ui, à diagnostiquer)
-	if imp_int > 0:
-		row.add_child(_make_icon_column(resource_name, imp_int, "crossed"))
-	else:
-		row.add_child(_make_empty_column())
 	return row
 
 func _make_empty_column() -> Control:

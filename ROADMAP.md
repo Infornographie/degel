@@ -212,7 +212,6 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 À traiter en séances dédiées quand l'envie passe par là :
 
 - **Bug d'affichage `usable` électricité.** Le label affiche "synth: -3" mais l'usable ne reflète pas la déduction. Hypothèse : `synth.active` est true sans worker, ou conso pas déduite au bon moment dans TurnResolver.
-- **Doublon de colonne "impossible"** dans `ProductionView._make_row` : la colonne 4 est ajoutée deux fois (FIXME dans le code). Visuel à diagnostiquer.
 - **Invariant "toujours un STATE actif" potentiellement cassé après retrait de STATE.** `_clear_famished()` retire `famished` sans reposer `normal`. Si le survivant n'était pas fatigué avant, il se retrouve sans STATE. Même préoccupation à surveiller pour tout futur retrait de STATE hors du système de durée (qui, lui, repose `normal` correctement via `_resolve_trait_durations`). À vérifier visuellement dès que l'UI affichera les STATE. Fix pressenti : reposer `normal` côté appelant après tout `remove_trait` de STATE, ou centraliser dans `Survivor.remove_trait` avec une dépendance au registry (moins propre).
 ---
 
@@ -223,14 +222,11 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **`necrology` redondant** avec `event_log` filtré sur `category == "loss"`. Migration possible.
 - **Signal `nightly_deaths` mal nommé** : porte tous les events du tour, pas seulement les morts. À renommer (`turn_news` ou `nightly_events`).
 - **`construction_started` réutilisé pour rafraîchir l'UI** (deux call sites avec `# rafraîchir` en commentaire dans `game_state.gd`). Un vrai signal de refresh manque.
-- **Doublon `_find_building` vs `_find_building_by_type`** dans `GameState`. Fusion à faire en passant.
 - **Layout colony hardcodé** (`COLONY_SLOTS=12`, `STARTER_SLOTS`) dans `ColonyView`. À déplacer dans une Resource configurable quand l'équilibrage l'exigera.
 - **Ordre des bâtiments dans `_resolve_buildings_operation`** : premier servi sur les inputs partagés. Acceptable, à raffiner si gênant.
 - **UI/loc encore branchées sur strings hardcodées — migration en cours.** `GameState.resources["food"]` reste la clé d'accès (par design). Côté affichage : `UiPresentation.resource()`, `UiPresentation.resource_icon()`, `ResourcesBar` et `ProductionView` migrés sur `ResourceRegistry`. Restent à migrer au fil des touches : `InfosSection` (affichage électricité/heat) et autres callsites qui hardcodent encore des noms de ressources.
 - **Signal `building_assignment_changed` au nom trop étroit.** Sert désormais à refresh sur : assignation, toggle synth, changement d'intensité. À renommer (`building_settings_changed` ou `building_state_changed`) en cohérence avec les dettes déjà nommées sur `nightly_deaths` et `construction_started`.
-- **`_apply_multiplier` dans TurnResolver à supprimer après migration famine.** Devient inutile quand la famine passera en trait `famished` — plus aucun multiplicateur global. À vérifier à ce moment-là qu'aucun autre call site ne s'y accroche.
 - **`TraitRegistry` à créer**, sur le modèle de `BuildingRegistry` / `ActivityRegistry`. Aujourd'hui, deux lookups linéaires existent en parallèle : `TurnResolver._get_trait_by_id` avec cache local, `GameState._find_trait` sans cache. À centraliser en une classe dédiée avec cache statique et lookup O(1), accessible depuis les deux (et depuis l'UI plus tard).
-- **`targeted_wake` ne set pas `wake_order`.** Un survivant réveillé par recherche ciblée n'a pas d'ordre de réveil. Probablement un oubli — à vérifier et corriger quand on touchera à nouveau au flux de wake.
 ---
 
 ## 🧹 Dettes mineures
@@ -246,7 +242,6 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Audit `translations.csv`** : clés vraisemblablement mortes à grep et supprimer si confirmé : `JOB_*` (enum supprimé en 8.1), `DEATH_*` (remplacés par `EVENT_DEATH_*`), `LABEL_FOOD/WOOD/ORE/HEAT/REACTOR/SYNTH_COST/USABLE/ELEC_HEADER` (anciens labels), `LABEL_SYNTH_TOGGLE` (ancien checkbox synthé), `ROLE_GATHERER/FARMER/HERBALIST/LUMBERJACK/MINER` (anciens roles d'activité). Doublons quasi-identiques à fusionner : `POPUP_NEWS_TITLE`/`NEWS_TITLE`, `POPUP_NEWS_PREFIX`/`NEWS_INTRO`, `BTN_ASSIGN`/`BTN_ASSIGN_WORKER`. Sections "à auditer" déjà marquées dans le CSV.
 - **Duplication du chargement de sprite survivant** dans `MapView` et `SurvivorsView.SurvivorSprite`. Les deux dupliquent la logique de `UiPresentation.survivor_sprite()` parce qu'ils ont besoin d'un TextureRect avec comportement custom (positionnement absolu pour MapView, tooltip riche pour SurvivorsView). À factoriser au moment du chantier UI Colonization : élargir `UiPresentation.survivor_sprite()` pour accepter des modes (tooltip simple, tooltip riche RichText, positionnement custom), ou retourner un TextureRect vierge que les appelants configurent.
 - **`Survivor.sprite_variant` à retirer une fois tous les sprites profession en place.** Aujourd'hui sert de fallback quand `Profession.sprite` est null. Quand le pool sera complet (et avant ça, la décision sur le système de variants pour représentativité — voir one-pager), `sprite_variant` et `SURVIVOR_SPRITE_PATH` deviendront morts.
-- **Signal `targeted_wake_failed` émis dans le vide.** Plus aucun handler ne l'écoute depuis l'extraction de la phase 8. Du coup, échec de recherche ciblée = élec dépensée silencieusement, aucun feedback au joueur. À rebrancher dans `ComputerView` ou dans le journal d'événements.
 - **Affichage des bonus profession dans l'UI d'assignation.** Mécanique en place et fonctionnelle, mais le joueur voit "+4 food" sans savoir que c'est un bonus profession (vs. "+3 de base"). À révéler via la prochaine refonte UI d'assignation bidirectionnelle (voir backlog "Refonte sélection sur tuile façon Colonization").
 - **Erreur Godot `_push_unhandled_input_internal: !is_inside_tree()`.** Warning interne récurrent, probablement lié à un popup qui se `queue_free` pendant qu'il a encore le focus. Pas reproductible en pattern clair pour l'instant, à surveiller.
 ---
@@ -269,7 +264,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Engine** : Godot 4.6.3, GDScript, GL Compatibility, pas de 3D
 - **Structure projet** :
   - `res://systems/core/` : game_state, game_config, tile_config, turn_resolver, game_event
-  - `res://systems/world/` : hex_map, hex_tile, production_system, activity, activity_registry
+  - `res://systems/world/` : hex_map, hex_tile, activity, activity_registry, resource_type, resource_registry
   - `res://systems/survivors/` : roster, survivor
   - `res://systems/buildings/` : building, building_config, building_registry
 - `res://resources/` : tres de config (game, tile, activities/, buildings/, resource_types/) + `game_registry.tres` (manifest central de tout le contenu data-driven)

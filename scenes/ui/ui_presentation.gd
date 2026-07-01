@@ -224,7 +224,7 @@ static func open_building_popup(parent: Node, b: Building, popup_position: Vecto
 			return
 		var action: String = meta.get("action", "")
 		if action == "clear_building":
-			var bb: Building = GameState._find_building(meta["building_id"])
+			var bb: Building = GameState._find_building_by_type(meta["building_id"])
 			if bb != null:
 				for wid in bb.worker_ids.duplicate():
 					GameState.unassign_from_building(wid)

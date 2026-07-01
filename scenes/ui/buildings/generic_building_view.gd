@@ -76,7 +76,7 @@ func _build_under_construction(vbox: VBoxContainer) -> void:
 			row.add_child(UiPresentation.resource_icon(resource_name, ICON_SIZE))
 		vbox.add_child(row)
 	# Mise en évidence si c'est la cible active
-	var zone: Building = GameState._find_building("construction_zone")
+	var zone: Building = GameState._find_building_by_type("construction_zone")
 	var is_active: bool = (zone != null and zone.construction_target == str(_building.instance_id))
 	if is_active:
 		modulate = Color(1.2, 1.2, 0.9)  # léger jaune pour l'active

@@ -1,7 +1,6 @@
 extends Node
 ## GameState — cœur de la simulation (autoload).
 
-var production_system: ProductionSystem
 var activity_registry: ActivityRegistry
 var turn_resolver: TurnResolver
 
@@ -18,7 +17,6 @@ signal nightly_deaths(events: Array)   # liste de { name, profession, cause }
 signal famine_started
 signal famine_ended
 signal candidates_changed
-signal targeted_wake_failed(profession: StringName)
 signal tile_assignment_changed(tile: HexTile)
 signal run_ended(cause: EndCause)
 signal building_assignment_changed(building: Building)
@@ -103,7 +101,6 @@ func _ready() -> void:
 	activity_registry = ActivityRegistry.new()
 	roster = Roster.new(config.roster_size)
 	hex_map = HexMap.new(2, tile_config)
-	production_system = ProductionSystem.new(hex_map, roster, activity_registry)
 	turn_resolver = TurnResolver.new(self)
 
 	_init_starter_buildings()
@@ -217,7 +214,7 @@ func assign_to_building(survivor_id: int, building_id: String) -> bool:
 	var s: Survivor = roster.get_by_id(survivor_id)
 	if s == null or not s.awake:
 		return false
-	var target: Building = _find_building(building_id)
+	var target: Building = _find_building_by_type(building_id)
 	if target == null or target.state != Building.State.OPERATIONAL:
 		return false
 	if target.worker_ids.size() >= target.workers_max():
@@ -235,18 +232,12 @@ func unassign_from_building(survivor_id: int) -> bool:
 	var s: Survivor = roster.get_by_id(survivor_id)
 	if s == null or s.building_id == "":
 		return false
-	var b: Building = _find_building(s.building_id)
+	var b: Building = _find_building_by_type(s.building_id)
 	if b != null:
 		b.worker_ids.erase(survivor_id)
 		building_assignment_changed.emit(b)
 	s.building_id = ""
 	return true
-
-func _find_building(id: String) -> Building:
-	for b in buildings:
-		if b.config.id == id:
-			return b
-	return null
 
 ## Helper : retire un colon de partout où il est assigné (tuile ou bâtiment).
 func _remove_survivor_from_assignments(s: Survivor) -> void:
@@ -257,7 +248,7 @@ func _remove_survivor_from_assignments(s: Survivor) -> void:
 			tile_assignment_changed.emit(t)
 		s.tile_key = ""
 	if s.building_id != "":
-		var b: Building = _find_building(s.building_id)
+		var b: Building = _find_building_by_type(s.building_id)
 		if b != null:
 			b.worker_ids.erase(s.id)
 			building_assignment_changed.emit(b)
@@ -450,16 +441,16 @@ func targeted_wake(prof_id: StringName) -> bool:
 	_wakes_done_this_turn += 1
 	var s: Survivor = roster.find_sleeping_by_profession_id(prof_id)
 	if s == null:
-		targeted_wake_failed.emit(prof_id)
+		log_event("colony", "EVENT_TARGETED_WAKE_FAIL", ["tr:" + Roster.name_key(prof_id)])
 		candidates_changed.emit()
 		resources_changed.emit(resources)
 		return false
 	s.awake = true
 	_apply_initial_traits(s)
+	s.wake_order = _next_wake_order
 	if _next_wake_order == 0:
 		_apply_first_awakened(s)
-		s.wake_order = _next_wake_order
-		_next_wake_order += 1
+	_next_wake_order += 1
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()

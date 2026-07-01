@@ -116,11 +116,7 @@ func _add_row(s: Survivor) -> void:
 
 	# Sprite avec tooltip riche
 	var sprite := SurvivorSprite.new()
-	var prof := Roster.get_profession(s.profession)
-	if prof != null and prof.sprite != null:
-		sprite.texture = prof.sprite
-	else:
-		sprite.texture = load(SURVIVOR_SPRITE_PATH % s.sprite_variant)
+	sprite.texture = _load_survivor_texture(s)
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
