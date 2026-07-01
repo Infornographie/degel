@@ -1,6 +1,8 @@
 [gd_resource type="Resource" script_class="Profession" format=3 uid="uid://bfpgg54u36q2s"]
 
 [ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_5n2o6"]
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_ne55e"]
+[ext_resource type="Resource" uid="uid://bwws0gmg8q0cp" path="res://resources/traits/out_of_touch.tres" id="2_gqdj5"]
 [ext_resource type="Texture2D" uid="uid://bn2njxeb4w3d6" path="res://assets/survivors/generic5.png" id="2_ym6gl"]
 [ext_resource type="Resource" uid="uid://b6pmjmlx2ebvx" path="res://resources/tribes/useless_tech.tres" id="3_25e38"]
 
@@ -11,4 +13,5 @@ name_key = "PROF_GAME_DESIGNER"
 tribe = ExtResource("3_25e38")
 rarity = 3
 sprite = ExtResource("2_ym6gl")
+initial_traits = Array[ExtResource("1_ne55e")]([ExtResource("2_gqdj5")])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"

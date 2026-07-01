@@ -1,7 +1,9 @@
 [gd_resource type="Resource" script_class="Profession" format=3 uid="uid://bkmnddutgje2c"]
 
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_tq865"]
 [ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_v7uum"]
 [ext_resource type="Texture2D" uid="uid://dye8ab704lsg5" path="res://assets/survivors/generic1.png" id="2_kdije"]
+[ext_resource type="Resource" uid="uid://dvr81w3igm1ts" path="res://resources/traits/handy.tres" id="2_rgguh"]
 [ext_resource type="Resource" uid="uid://cdston0co6bmq" path="res://resources/tribes/services.tres" id="3_c236t"]
 
 [resource]
@@ -11,4 +13,5 @@ name_key = "PROF_PRIVATE_PILOT"
 tribe = ExtResource("3_c236t")
 rarity = 3
 sprite = ExtResource("2_kdije")
+initial_traits = Array[ExtResource("1_tq865")]([ExtResource("2_rgguh")])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"

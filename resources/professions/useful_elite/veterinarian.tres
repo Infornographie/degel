@@ -1,6 +1,8 @@
 [gd_resource type="Resource" script_class="Profession" format=3 uid="uid://qx6c3gfcb64y"]
 
 [ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_6a6er"]
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_bsk10"]
+[ext_resource type="Resource" uid="uid://dvr81w3igm1ts" path="res://resources/traits/handy.tres" id="2_844rq"]
 [ext_resource type="Texture2D" uid="uid://cr81rbc3u1xlm" path="res://assets/survivors/generic8.png" id="2_aklui"]
 [ext_resource type="Resource" uid="uid://c76y3d6nno71c" path="res://resources/tribes/useful_elite.tres" id="3_ftr8d"]
 
@@ -11,4 +13,5 @@ name_key = "PROF_VETERINARIAN"
 tribe = ExtResource("3_ftr8d")
 rarity = 2
 sprite = ExtResource("2_aklui")
+initial_traits = Array[ExtResource("1_bsk10")]([ExtResource("2_844rq")])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"

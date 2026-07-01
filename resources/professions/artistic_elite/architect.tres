@@ -1,8 +1,10 @@
 [gd_resource type="Resource" script_class="Profession" format=3 uid="uid://by07p7vgri35f"]
 
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_4aag0"]
 [ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_txst7"]
 [ext_resource type="Texture2D" uid="uid://cajyifhf2vyaq" path="res://assets/survivors/generic4.png" id="2_8ip76"]
 [ext_resource type="Resource" uid="uid://2awrx83xejs6" path="res://resources/tribes/artistic_elite.tres" id="2_ps3b3"]
+[ext_resource type="Resource" uid="uid://dvr81w3igm1ts" path="res://resources/traits/handy.tres" id="2_q7wco"]
 
 [resource]
 script = ExtResource("1_txst7")
@@ -11,4 +13,5 @@ name_key = "PROF_ARCHITECT"
 tribe = ExtResource("2_ps3b3")
 rarity = 3
 sprite = ExtResource("2_8ip76")
+initial_traits = Array[ExtResource("1_4aag0")]([ExtResource("2_q7wco")])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"

@@ -1,7 +1,9 @@
 [gd_resource type="Resource" script_class="Profession" format=3 uid="uid://837dglmkp2se"]
 
 [ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_rrav1"]
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_y1a4x"]
 [ext_resource type="Texture2D" uid="uid://bn2njxeb4w3d6" path="res://assets/survivors/generic5.png" id="2_31t40"]
+[ext_resource type="Resource" uid="uid://bwws0gmg8q0cp" path="res://resources/traits/out_of_touch.tres" id="2_nf5tl"]
 [ext_resource type="Resource" uid="uid://b6pmjmlx2ebvx" path="res://resources/tribes/useless_tech.tres" id="3_0017g"]
 
 [resource]
@@ -11,4 +13,5 @@ name_key = "PROF_CRYPTO_EVANGELIST"
 tribe = ExtResource("3_0017g")
 rarity = 2
 sprite = ExtResource("2_31t40")
+initial_traits = Array[ExtResource("1_y1a4x")]([ExtResource("2_nf5tl")])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"

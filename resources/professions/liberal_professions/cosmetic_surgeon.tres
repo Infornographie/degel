@@ -1,7 +1,9 @@
 [gd_resource type="Resource" script_class="Profession" format=3 uid="uid://58v1jm07qdk7"]
 
 [ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_cd6lm"]
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_q1482"]
 [ext_resource type="Texture2D" uid="uid://bvnt6cbffjkoi" path="res://assets/survivors/generic3.png" id="2_h53it"]
+[ext_resource type="Resource" uid="uid://bwws0gmg8q0cp" path="res://resources/traits/out_of_touch.tres" id="2_spcs8"]
 [ext_resource type="Resource" uid="uid://buujkr787hj41" path="res://resources/tribes/liberal_professions.tres" id="3_f1xo4"]
 
 [resource]
@@ -11,4 +13,5 @@ name_key = "PROF_COSMETIC_SURGEON"
 tribe = ExtResource("3_f1xo4")
 rarity = 3
 sprite = ExtResource("2_h53it")
+initial_traits = Array[ExtResource("1_q1482")]([ExtResource("2_spcs8")])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"

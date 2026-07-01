@@ -1,7 +1,9 @@
 [gd_resource type="Resource" script_class="Profession" format=3 uid="uid://shs4labvnspg"]
 
 [ext_resource type="Script" uid="uid://kqw5u10d3rw0" path="res://systems/survivors/profession.gd" id="1_6h0bj"]
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_7ue3a"]
 [ext_resource type="Texture2D" uid="uid://dye8ab704lsg5" path="res://assets/survivors/generic1.png" id="2_0bm7r"]
+[ext_resource type="Resource" uid="uid://bwws0gmg8q0cp" path="res://resources/traits/out_of_touch.tres" id="2_vx4iw"]
 [ext_resource type="Resource" uid="uid://cdston0co6bmq" path="res://resources/tribes/services.tres" id="3_1l4ic"]
 
 [resource]
@@ -11,4 +13,5 @@ name_key = "PROF_ESTATE_MANAGER"
 tribe = ExtResource("3_1l4ic")
 rarity = 3
 sprite = ExtResource("2_0bm7r")
+initial_traits = Array[ExtResource("1_7ue3a")]([ExtResource("2_vx4iw")])
 metadata/_custom_type_script = "uid://kqw5u10d3rw0"
