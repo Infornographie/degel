@@ -81,6 +81,23 @@ Migration de `Roster.NAMES` / `PROFESSIONS` hardcodés vers un système entière
 
 Conséquence stratégique : la couche narrative à venir (Jalon 7) trouve déjà ses crochets posés — tribus pour les événements de groupe, professions pour les événements ciblés, sprites pour la caractérisation visuelle.
 
+### Phase 10 — Système de traits unifié
+
+Migration du système de bonus/malus vers un modèle de traits unifié : STATE (état temporaire, un seul à la fois), NATURE (qui il est devenu, semi-permanent), EVENT (son histoire). Un seul `TraitConfig.tres` porte les modifiers + métadonnées d'affichage + lifecycle ; la résolution les agrège indistinctement, l'UI les séparera par catégorie.
+
+- **`TraitConfig` resource** (`systems/traits/trait_config.gd`) : id, name_key, description_key, category (STATE/NATURE/EVENT), icon, color_hint sémantique, 3 modifiers + filtre ressource, duration_turns.
+- **`Survivor` étendu** : `traits: Array[TraitConfig]`, `trait_durations: Dictionary`, méthodes `add_trait` (avec unicité STATE et reset de durée), `remove_trait`, `has_trait`, `get_trait`. Plus `fatigue_streak` et `last_activity_id`.
+- **`TurnResolver`** : les 3 helpers (`_activity_modifier`, `_construction_modifier`, `_building_output_modifier`) itèrent maintenant sur `s.traits`. Les signatures ne changent pas — les call sites (dont `compute_activity_yield`) restent intacts.
+- **Mécanique de fatigue** : `_resolve_fatigue()` détecte la répétition d'activité (seuil = 3 tours), pose/retire le trait `tired`. Retour à `normal` sur changement d'activité.
+- **Décrément des durées** : `_resolve_trait_durations()` en fin de tour retire les traits expirés ; si c'était un STATE, repose `normal` pour maintenir l'invariant "toujours un STATE actif".
+- **`Profession`** : perd les 4 champs de modifiers, gagne `initial_traits: Array[TraitConfig]`. Redevient une étiquette d'origine immuable.
+- **`Tribe`** : inchangée — reste une étiquette narrative pure pour les events futurs.
+- **`GameState.wake()` et `targeted_wake()`** : posent le trait `normal` + les `initial_traits` de la profession après réveil, via `_apply_initial_traits()`.
+- **`GameRegistry`** étendu : nouveau champ `traits: Array[TraitConfig]`.
+- **Six traits initiaux créés** : `normal`, `tired`, `famished` (posé mais pas encore utilisé par la famine), `food_savvy`, `out_of_touch`, `handy`.
+
+Test validé : subsistance_farmer avec trait `food_savvy` produit +4 en cueillette forêt (au lieu de +3). Le trait `tired` se pose et se retire correctement avec la répétition/changement d'activité.
+
 ### Build & livraison
 
 Build Windows exportable (BuildingRegistry/ActivityRegistry chargent via listes explicites, `DirAccess` ne marche pas dans les exe exportés).
@@ -124,6 +141,7 @@ Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désorma
 - **Substitution de ressources.** Certains bâtiments avancés acceptent l'un *ou* l'autre input (heat ⊕ electricity).
 - **Améliorations de bâtiments** (niveau 1 → 2 → 3). Les champs existent dans `BuildingConfig`, à brancher avec coût d'upgrade et UI dédiée.
 - **Bilan ressources ordonné** (polish d'équilibrage). Pouvoir exprimer des séquences en blocs (`5 wood, 5 ore, 5 wood, 5 tools`) plutôt que `build_order` linéaire.
+- **`first_awakened` trait** à poser sur les 3 survivants du choix initial (ou sur le tout premier réveillé si pas encore de choix initial). Premier trait de catégorie EVENT à intégrer — validation du support de la catégorie narrative pure.
 
 ### Carte & territoire
 
@@ -168,7 +186,6 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **Travail comme état, pas identité.** Lassitude par répétition fait baisser l'efficacité. Caractéristiques acquises = traits humains, pas métiers. Bâtiments/techs débloquent des roulements automatisés.
 - **Bunker computer comme voix narrative.** Interface de tutoriel et de guidage qui parle au joueur.
 - **UI d'assignation bidirectionnelle façon Colonization** (polish prioritaire). Quand on clique sur une case : voir tous les personnages avec leur localisation actuelle et leur production sur cette case spécifique. Quand on clique sur un personnage : voir toutes les cases avec leur meilleure production possible si on le déplaçait. Révèle visuellement le système de bonus profession qui vient d'être mis en place, et conditionne sa lisibilité côté joueur.
-- **Système de traits unifié** (design clos, prochaine session = code). Un modèle `TraitConfig.tres` unique porte les modifiers (activity / construction / building + filtre ressource) + métadonnées d'affichage (name_key, description_key, icon, color_hint sémantique) + lifecycle (duration_turns, -1 = permanent). Champ `category: { STATE, NATURE, EVENT }` qui guide l'UI sans changer la résolution.
 
   Stockage sur `Survivor` : `traits: Array[TraitConfig]` (un par id maximum, pas de stacking — re-pose = reset de durée) + `trait_durations: Dictionary` (id → tours restants). Plus `fatigue_streak: int` et `last_activity_id: StringName` pour la mécanique de fatigue.
 
@@ -206,6 +223,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **UI/loc encore branchées sur strings hardcodées — migration en cours.** `GameState.resources["food"]` reste la clé d'accès (par design). Côté affichage : `UiPresentation.resource()`, `UiPresentation.resource_icon()`, `ResourcesBar` et `ProductionView` migrés sur `ResourceRegistry`. Restent à migrer au fil des touches : `InfosSection` (affichage électricité/heat) et autres callsites qui hardcodent encore des noms de ressources.
 - **Signal `building_assignment_changed` au nom trop étroit.** Sert désormais à refresh sur : assignation, toggle synth, changement d'intensité. À renommer (`building_settings_changed` ou `building_state_changed`) en cohérence avec les dettes déjà nommées sur `nightly_deaths` et `construction_started`.
 - **`_apply_multiplier` dans TurnResolver à supprimer après migration famine.** Devient inutile quand la famine passera en trait `famished` — plus aucun multiplicateur global. À vérifier à ce moment-là qu'aucun autre call site ne s'y accroche.
+- **`TraitRegistry` à créer**, sur le modèle de `BuildingRegistry` / `ActivityRegistry`. Aujourd'hui, deux lookups linéaires existent en parallèle : `TurnResolver._get_trait_by_id` avec cache local, `GameState._find_trait` sans cache. À centraliser en une classe dédiée avec cache statique et lookup O(1), accessible depuis les deux (et depuis l'UI plus tard).
 ---
 
 ## 🧹 Dettes mineures

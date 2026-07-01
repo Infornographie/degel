@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="TraitConfig" format=3 uid="uid://uv1dhg2k1cow"]
+
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_a0t1c"]
+
+[resource]
+script = ExtResource("1_a0t1c")
+id = &"normal"
+name_key = "TRAIT_NORMAL"
+description_key = "TRAIT_NORMAL_DESC"
+category = 0
+metadata/_custom_type_script = "uid://fqyxnl8a0ob5"

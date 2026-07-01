@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TraitConfig" format=3 uid="uid://bwws0gmg8q0cp"]
+
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_s3kx7"]
+
+[resource]
+script = ExtResource("1_s3kx7")
+id = &"out_of_touch"
+name_key = "TRAIT_OUT_OF_TOUCH"
+description_key = "TRAIT_OUT_OF_TOUCH_DESC"
+color_hint = "negative"
+activity_modifier = 0.8
+construction_modifier = 0.8
+metadata/_custom_type_script = "uid://fqyxnl8a0ob5"

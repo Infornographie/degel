@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="TraitConfig" format=3 uid="uid://dvr81w3igm1ts"]
+
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_via48"]
+
+[resource]
+script = ExtResource("1_via48")
+id = &"handy"
+name_key = "TRAIT_HANDY"
+description_key = "TRAIT_HANDY_DESC"
+color_hint = "positive"
+construction_modifier = 1.2
+building_modifier = 1.2
+metadata/_custom_type_script = "uid://fqyxnl8a0ob5"

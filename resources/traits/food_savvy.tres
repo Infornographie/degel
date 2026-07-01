@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="TraitConfig" format=3 uid="uid://b3fhtbd41v8a7"]
+
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_mfib5"]
+
+[resource]
+script = ExtResource("1_mfib5")
+id = &"food_savvy"
+name_key = "TRAIT_FOOD_SAVVY"
+description_key = "TRAIT_FOOD_SAVVY_DESC"
+color_hint = "positive"
+activity_modifier = 1.2
+building_modifier = 1.2
+modifier_resource_filter = Array[StringName]([&"food", &"meal"])
+metadata/_custom_type_script = "uid://fqyxnl8a0ob5"

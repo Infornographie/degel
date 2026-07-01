@@ -145,6 +145,7 @@ func wake(id: int) -> bool:
 	_electricity_consumed_this_turn += config.wake_cost
 	_wakes_done_this_turn += 1
 	s.awake = true
+	_apply_initial_traits(s)
 	s.wake_order = _next_wake_order
 	_next_wake_order += 1
 	survivor_woken.emit(s)
@@ -454,6 +455,7 @@ func targeted_wake(prof_id: StringName) -> bool:
 		resources_changed.emit(resources)
 		return false
 	s.awake = true
+	_apply_initial_traits(s)
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()
@@ -550,4 +552,24 @@ func _find_building_by_instance(instance_id: int) -> Building:
 	for b in buildings:
 		if b.instance_id == instance_id:
 			return b
+	return null
+
+## Pose le trait `normal` puis les initial_traits de la profession.
+func _apply_initial_traits(s: Survivor) -> void:
+	var normal_trait: TraitConfig = _find_trait(&"normal")
+	if normal_trait != null:
+		s.add_trait(normal_trait)
+	var prof: Profession = Roster.get_profession(s.profession)
+	if prof == null:
+		return
+	for t in prof.initial_traits:
+		if t != null:
+			s.add_trait(t)
+
+## Lookup trait par id via le registry. Duplication temporaire — voir dette
+## `TraitRegistry` dans la roadmap.
+func _find_trait(id: StringName) -> TraitConfig:
+	for t in GameRegistry.load_default().traits:
+		if t.id == id:
+			return t
 	return null

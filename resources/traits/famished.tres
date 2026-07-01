@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="TraitConfig" format=3 uid="uid://pxtamdk5rv78"]
+
+[ext_resource type="Script" uid="uid://fqyxnl8a0ob5" path="res://systems/traits/trait_config.gd" id="1_lmoqe"]
+
+[resource]
+script = ExtResource("1_lmoqe")
+id = &"famished"
+name_key = "TRAIT_FAMISHED"
+description_key = "TRAIT_FAMISHED_DESC"
+category = 0
+color_hint = "negative"
+activity_modifier = 0.8
+construction_modifier = 0.8
+building_modifier = 0.8
+metadata/_custom_type_script = "uid://fqyxnl8a0ob5"

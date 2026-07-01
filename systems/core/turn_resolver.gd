@@ -175,6 +175,10 @@ func execute_turn() -> void:
 	_resolve_buildings_operation()
 	# 5) Mutations de tuiles (forêt épuisée → plaine).
 	_resolve_tile_mutations()
+	# 6) Fatigue : détection de répétition d'activité, pose/retrait de `tired`.
+	_resolve_fatigue()
+	# 7) Décrément des durées de traits, retrait des expirés.
+	_resolve_trait_durations()
 
 # ── Étapes d'exécution ──
 
@@ -398,47 +402,129 @@ func compute_activity_yield(raw: float, s: Survivor, produced_resource: String) 
 	return produced
 
 # ──────────────────────────────────────────────────────────────────────────
-#  MODIFIERS PROFESSION (helpers centralisés — une logique, un endroit)
+#  MODIFIERS TRAITS (helpers centralisés — une logique, un endroit)
 # ──────────────────────────────────────────────────────────────────────────
 
-## Modifier d'activité pour le survivant assigné à cette tuile, sur la ressource
-## produite par l'activité. Renvoie 1.0 si pas de profession ou pas de match.
+## Modifier d'activité : produit de tous les traits du survivant, pour la
+## ressource produite par l'activité.
 func _activity_modifier(s: Survivor, resource_name: String) -> float:
 	if s == null:
 		return 1.0
-	var prof: Profession = Roster.get_profession(s.profession)
-	if prof == null:
-		return 1.0
-	return prof.activity_modifier_for(StringName(resource_name))
+	var res: StringName = StringName(resource_name)
+	var total: float = 1.0
+	for t in s.traits:
+		total *= t.activity_modifier_for(res)
+	return total
 
-## Modifier de construction d'un survivant donné.
+## Modifier de construction : produit de tous les traits du survivant.
 func _construction_modifier(s: Survivor) -> float:
 	if s == null:
 		return 1.0
-	var prof: Profession = Roster.get_profession(s.profession)
-	if prof == null:
-		return 1.0
-	return prof.construction_modifier_value()
+	var total: float = 1.0
+	for t in s.traits:
+		total *= t.construction_modifier
+	return total
 
-## Modifier de bâtiment, basé sur le premier worker (1 worker/bâtiment pour
-## l'instant). Matche le filtre prof contre input ∪ output du bâtiment.
+## Modifier de bâtiment : lit le premier worker (1 worker/bâtiment pour l'instant),
+## agrège ses traits. Le filtre trait matche sur input ∪ output du bâtiment.
 func _building_output_modifier(b: Building) -> float:
 	if b.worker_ids.is_empty():
 		return 1.0
 	var s: Survivor = gs.roster.get_by_id(b.worker_ids[0])
 	if s == null:
 		return 1.0
-	var prof: Profession = Roster.get_profession(s.profession)
-	if prof == null:
-		return 1.0
 	var resources_in_play: Array = []
 	for r in b.config.inputs.keys():
 		resources_in_play.append(StringName(r))
 	for r in b.config.outputs.keys():
 		resources_in_play.append(StringName(r))
-	return prof.building_modifier_for(resources_in_play)
+	var total: float = 1.0
+	for t in s.traits:
+		total *= t.building_modifier_for(resources_in_play)
+	return total
 
 func _add(dict: Dictionary, key: String, amount: float) -> void:
 	if amount == 0.0:
 		return
 	dict[key] = dict.get(key, 0.0) + amount
+
+# ──────────────────────────────────────────────────────────────────────────
+#  FATIGUE (STATE `tired` posé sur répétition d'activité)
+# ──────────────────────────────────────────────────────────────────────────
+
+## Seuil de fatigue : après N tours consécutifs sur la même activité.
+const FATIGUE_THRESHOLD: int = 3
+
+## Met à jour le compteur de fatigue de chaque éveillé et pose/retire le trait
+## `tired`. À appeler UNE fois par tour, après la résolution de production.
+func _resolve_fatigue() -> void:
+	var tired_trait: TraitConfig = _get_trait_by_id(&"tired")
+	var normal_trait: TraitConfig = _get_trait_by_id(&"normal")
+	if tired_trait == null or normal_trait == null:
+		return  # traits pas encore créés, silencieux
+	for s in gs.awake_survivors():
+		var current: StringName = StringName(s.activity_id)
+		if current == &"":
+			# Pas d'activité ce tour : on remet à zéro
+			s.fatigue_streak = 0
+			s.last_activity_id = &""
+			if s.has_trait(&"tired"):
+				s.add_trait(normal_trait)
+			continue
+		if current == s.last_activity_id:
+			s.fatigue_streak += 1
+		else:
+			s.fatigue_streak = 1
+			# Changement d'activité : on repose normal si on était tired
+			if s.has_trait(&"tired"):
+				s.add_trait(normal_trait)
+		s.last_activity_id = current
+		# Pose du trait tired si seuil atteint
+		if s.fatigue_streak >= FATIGUE_THRESHOLD and not s.has_trait(&"tired"):
+			s.add_trait(tired_trait)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+#  DÉCRÉMENT DES DURÉES DE TRAITS
+# ──────────────────────────────────────────────────────────────────────────
+
+## Décrémente `trait_durations` de chaque éveillé, retire les traits expirés.
+## Si le trait retiré était un STATE, repose `normal` pour maintenir l'invariant
+## "toujours un STATE actif".
+func _resolve_trait_durations() -> void:
+	var normal_trait: TraitConfig = _get_trait_by_id(&"normal")
+	for s in gs.awake_survivors():
+		if s.trait_durations.is_empty():
+			continue
+		var expired: Array[StringName] = []
+		for id in s.trait_durations.keys():
+			s.trait_durations[id] -= 1
+			if s.trait_durations[id] <= 0:
+				expired.append(id)
+		for id in expired:
+			var was_state: bool = false
+			var t: TraitConfig = s.get_trait(id)
+			if t != null and t.category == TraitConfig.Category.STATE:
+				was_state = true
+			s.remove_trait(id)
+			if was_state and normal_trait != null:
+				s.add_trait(normal_trait)
+
+
+# ──────────────────────────────────────────────────────────────────────────
+#  LOOKUP TRAITS (via game registry, cache local)
+# ──────────────────────────────────────────────────────────────────────────
+
+var _trait_cache: Dictionary = {}
+var _registry: GameRegistry = null
+
+func _get_trait_by_id(id: StringName) -> TraitConfig:
+	if _trait_cache.has(id):
+		return _trait_cache[id]
+	if _registry == null:
+		_registry = GameRegistry.load_default()
+	for t in _registry.traits:
+		if t.id == id:
+			_trait_cache[id] = t
+			return t
+	return null
