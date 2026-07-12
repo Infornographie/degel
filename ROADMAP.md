@@ -103,6 +103,24 @@ Migration du système de bonus/malus vers un modèle de traits unifié : STATE (
 Effet bonus observé : le passage famine → fatigue à la fin d'une famine fonctionne (le compteur `fatigue_streak` a continué à monter pendant la famine, `_resolve_fatigue` repose `tired` au tour suivant si le seuil est encore atteint). Confirme que traits STATE et fatigue interagissent proprement.
 Test validé : subsistance_farmer avec trait `food_savvy` produit +4 en cueillette forêt (au lieu de +3). Le trait `tired` se pose et se retire correctement avec la répétition/changement d'activité.
 
+### Phase 11 — Popup d'affectation aux tuiles (Colonization-style)
+
+Refonte complète du popup clic tuile de MapView. Remplacement du `PopupMenu` natif à sous-menus par un composant custom `TileAssignmentPopup` pensé pour la lisibilité du système de bonus profession/traits mis en place en Phase 9/10.
+
+- **Nouveau composant `TileAssignmentPopup`** (`res://scenes/ui/tile_assignment_popup.gd`, extends PopupPanel) : popup fixe centré, matrice activités × persos éveillés.
+- **Structure d'une row d'activité** : header fixe à gauche (nom · [inputs] → [output] · max N [+ % si risky]) + `ScrollContainer` horizontal propre à chaque activité contenant les slots persos. Header d'activité contraint à `COL_HEADER_MIN_WIDTH = 220` pour aligner les scrolls entre rows.
+- **Slots visuels reproduisant le pattern MapView** : hex de la couleur de la tuile en fond (`Polygon2D`), icônes de yield derrière, sprite du perso par-dessus. Meilleur candidat dispo mis en avant par teinte verte modulate sur l'hex.
+- **Séparation Dispo / Occupés** : dispo à gauche, `VSeparator`, occupés à droite. **Filtre pertinence** : les persos déjà en train de faire cette activité ailleurs sont masqués des occupés (les déplacer ne ferait qu'annuler leur prod actuelle pour la re-poser ici).
+- **Tooltip riche identique à SurvivorsView** : classe interne `RichHoverSlot` avec `_make_custom_tooltip` custom (BBCode : nom + profession + rôle + location + prod + traits colorés par `color_hint`).
+- **Dimensionnement adaptatif** : hauteur du popup = header + N_activités × row_height ; largeur = header + `MAX_VISIBLE_COLS = 5` slots visibles avant scroll horizontal. Cap 90% écran comme filet.
+- **Deux nouveaux helpers publics dans `GameState`** :
+  - `best_yield_for_activity(s, activity, exclude_tile_key)` — meilleur yield d'un survivant sur une activité, sur les tuiles workables compatibles (exclusion optionnelle pour révéler le "meilleur ailleurs")
+  - `best_yield_all_survivors(activity)` — meilleur yield tous éveillés × toutes tuiles confondues (échelle absolue affichée en tête de section)
+- **`MapView._open_tile_popup`** réduit à 4 lignes (délègue à `TileAssignmentPopup.open()`). Anciens champs `_tile_popup`, `_popup_submenus`, `_popup_tile_key` et callbacks `_on_main_popup_selected`, `_on_submenu_selected` supprimés (règle 1).
+- **5 nouvelles clés i18n** dans `translations.csv`, section "POPUP AFFECTATION TUILE".
+
+Ouvre la voie à la suite du chantier UI Colonization (Phase 12 prévue : popup clic perso au format symétrique + drag & drop).
+
 ### Build & livraison
 
 Build Windows exportable (BuildingRegistry/ActivityRegistry chargent via listes explicites, `DirAccess` ne marche pas dans les exe exportés).
@@ -141,7 +159,6 @@ Ajouter ou retirer une ressource, un bâtiment ou une activité se fait désorma
 
 ### Mécaniques de gestion à ajouter
 
-- **Priorité de consommation des meals.** Les meals existent (canteen produit du meal), mais ne sont pas consommés prioritairement à la place de la food brute.
 - **Sources multiples vers une même réserve.** Plusieurs icônes/sprites pour une même ressource (fraises, blé, gibier, synth → tous en `food`). Visualisation différenciée sur carte et prod view, compteur unique en réserve.
 - **Substitution de ressources.** Certains bâtiments avancés acceptent l'un *ou* l'autre input (heat ⊕ electricity).
 - **Améliorations de bâtiments** (niveau 1 → 2 → 3). Les champs existent dans `BuildingConfig`, à brancher avec coût d'upgrade et UI dédiée.
@@ -190,7 +207,7 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 
 - **Travail comme état, pas identité.** Lassitude par répétition fait baisser l'efficacité. Caractéristiques acquises = traits humains, pas métiers. Bâtiments/techs débloquent des roulements automatisés.
 - **Bunker computer comme voix narrative.** Interface de tutoriel et de guidage qui parle au joueur.
-- **UI d'assignation bidirectionnelle façon Colonization** (polish prioritaire). Quand on clique sur une case : voir tous les personnages avec leur localisation actuelle et leur production sur cette case spécifique. Quand on clique sur un personnage : voir toutes les cases avec leur meilleure production possible si on le déplaçait. Révèle visuellement le système de bonus profession qui vient d'être mis en place, et conditionne sa lisibilité côté joueur.
+- **UI d'assignation bidirectionnelle façon Colonization**. Sens tuile → persos livré en Phase 11 (matrice activités × persos, révèle enfin les bonus profession/traits). Reste à faire le sens perso → tuiles (popup clic sur un sprite listant les activités possibles + meilleure tuile pour chaque) et le drag & drop entre sprites et cases/bâtiments.
 
   Stockage sur `Survivor` : `traits: Array[TraitConfig]` (un par id maximum, pas de stacking — re-pose = reset de durée) + `trait_durations: Dictionary` (id → tours restants). Plus `fatigue_streak: int` et `last_activity_id: StringName` pour la mécanique de fatigue.
 
@@ -227,6 +244,8 @@ Structure d'événements (scriptés + procéduraux), choix moraux à conséquenc
 - **UI/loc encore branchées sur strings hardcodées — migration en cours.** `GameState.resources["food"]` reste la clé d'accès (par design). Côté affichage : `UiPresentation.resource()`, `UiPresentation.resource_icon()`, `ResourcesBar` et `ProductionView` migrés sur `ResourceRegistry`. Restent à migrer au fil des touches : `InfosSection` (affichage électricité/heat) et autres callsites qui hardcodent encore des noms de ressources.
 - **Signal `building_assignment_changed` au nom trop étroit.** Sert désormais à refresh sur : assignation, toggle synth, changement d'intensité. À renommer (`building_settings_changed` ou `building_state_changed`) en cohérence avec les dettes déjà nommées sur `nightly_deaths` et `construction_started`.
 - **`TraitRegistry` à créer**, sur le modèle de `BuildingRegistry` / `ActivityRegistry`. Aujourd'hui, deux lookups linéaires existent en parallèle : `TurnResolver._get_trait_by_id` avec cache local, `GameState._find_trait` sans cache. À centraliser en une classe dédiée avec cache statique et lookup O(1), accessible depuis les deux (et depuis l'UI plus tard).
+- **`TileAssignmentPopup` duplique le pattern MapView `_render_tile_worker`.** Constantes `HEX_RADIUS`, `TILE_PROD_ICON_SIZE`, `WORKER_SPRITE_SCALE`, `TILE_COLORS` + code de rendu sprite/icônes + fonction `_hex_polygon_points`. Duplication assumée temporairement — à factoriser lors du chantier de factorisation SurvivorSprite (helper `UiPresentation.survivor_with_yield_stack()` avec variantes contextuelles).
+- **Classe interne `RichHoverSlot` duplique `SurvivorsView.SurvivorSprite`.** Le `_make_custom_tooltip` custom, les helpers `_survivor_header_text` / `_build_trait_lines` / `_format_output`, et la constante `TRAIT_COLORS` sont maintenant dupliqués entre les deux vues. À unifier dans le même chantier — probablement vers `UiPresentation.rich_tooltip_for(s)` + une classe `SurvivorSprite` publique dans `scenes/ui/`.
 ---
 
 ## 🧹 Dettes mineures

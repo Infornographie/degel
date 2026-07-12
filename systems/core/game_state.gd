@@ -127,6 +127,32 @@ func expected_activity_yield(s: Survivor, tile: HexTile, activity: Activity) -> 
 	var raw: float = tile.yields.get(activity.id, 0.0)
 	return int(turn_resolver.compute_activity_yield(raw, s, activity.produced_resource))
 
+## Meilleur yield attendu de ce survivant pour cette activité, sur les tuiles
+## workables de type compatible. `exclude_tile_key` sert au format N/M du popup
+## d'affectation : on veut le meilleur AILLEURS pour révéler le coût d'opportunité.
+func best_yield_for_activity(s: Survivor, activity: Activity, exclude_tile_key: String = "") -> int:
+	var best: int = 0
+	for tile in hex_map.workable_tiles():
+		if tile.key() == exclude_tile_key:
+			continue
+		if not activity.allowed_tile_types.has(tile.type):
+			continue
+		var y: int = int(expected_activity_yield(s, tile, activity))
+		if y > best:
+			best = y
+	return best
+
+## Meilleur yield possible pour une activité, tous éveillés × toutes tuiles
+## workables confondus. Sert d'échelle absolue en tête de section dans le
+## popup d'affectation ("max N").
+func best_yield_all_survivors(activity: Activity) -> int:
+	var best: int = 0
+	for s in awake_survivors():
+		var y: int = best_yield_for_activity(s, activity)
+		if y > best:
+			best = y
+	return best
+
 # ── ACTIONS JOUEUR ──
 func wake(id: int) -> bool:
 	if is_over:

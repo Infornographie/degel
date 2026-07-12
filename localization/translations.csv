@@ -76,6 +76,13 @@ BTN_UNASSIGN,Retirer,Unassign
 BTN_ASSIGN_WORKER,Affecter,Assign
 LABEL_CLEAR_BUILDING,Vider le bâtiment,Clear building
 ,,
+# ─── POPUP AFFECTATION TUILE ─────,,
+POPUP_TILE_ASSIGN_TITLE,Affectation,Assign worker
+LABEL_AVAILABLE,Dispo,Available
+LABEL_OCCUPIED,Occupés,Occupied
+LABEL_MAX,max,max
+LABEL_NO_ACTIVITY,Aucune activité disponible ici,No activity available here
+,,
 # ─── ROLES (bâtiments) ─────────────────────────────,,
 ROLE_BUILDING_WORKER,Travailleur,Worker
 ROLE_IDLE,Inactif,Idle

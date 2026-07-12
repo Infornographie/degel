@@ -8,7 +8,7 @@ plains_ratio = 0.0
 forest_ratio = 0.8
 plains_yields = Dictionary[String, float]({
 "gardener": 4.0,
-"gathering": 2.0,
+"gathering": 3.0,
 "wood_picker": 1.0
 })
 forest_yields = Dictionary[String, float]({

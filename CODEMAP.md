@@ -7,7 +7,7 @@ But : éviter de recoder une logique existante ailleurs, garder "une logique, un
 session ayant changé la structure (nouveau fichier, fonction publique ajoutée/supprimée),
 même flux que ROADMAP.md.
  
-Dernière génération : à partir du commit `5960d65` (Traits assignment).
+Dernière génération : à partir du commit `[commit à venir]` (Popup d'affectation aux tuiles — Phase 11).
  
 ---
  
@@ -27,6 +27,15 @@ conformément à la règle 5 (nommer la dette). À ajouter à la ROADMAP si tu v
 	 commentaire "à terme, déplacer dans une Resource configurable (dette)."
    - `ResourceType.max_stock` : champ déclaré mais "pas encore appliqué dans GameState
      (dette consciente)."
+3. **`scenes/ui/tile_assignment_popup.gd`** duplique plusieurs constantes et le pattern
+   de rendu de MapView : `HEX_RADIUS`, `TILE_PROD_ICON_SIZE`, `WORKER_SPRITE_SCALE`,
+   `TILE_COLORS`, `_hex_polygon_points()`, plus le code inline du slot (icônes en fond
+   + sprite dessus). Assumé temporairement — factorisation prévue en même temps que
+   la dette SurvivorSprite (règle 3).
+4. **`scenes/ui/tile_assignment_popup.gd`** duplique aussi le pattern tooltip riche
+   de `SurvivorsView.SurvivorSprite` : classe interne `RichHoverSlot` avec
+   `_make_custom_tooltip`, helpers `_survivor_header_text` / `_build_trait_lines` /
+   `_format_output`, constante `TRAIT_COLORS`. À unifier vers `UiPresentation`.
 ---
  
 ## systems/core/ — Boucle de jeu, configuration, registre central
@@ -45,6 +54,8 @@ survivants, bâtiments) et orchestre la boucle de tour. Délègue la résolution
 - `get_survivor_output(s) -> Dictionary` — production projetée d'un survivant (utilisé par `survivors_view.gd`, `map_view.gd`)
 - `log_event(category, key, params)`, `events_for_turn(t)` — journal d'événements
 - `compute_score() -> Dictionary`
+- `best_yield_for_activity(s, activity, exclude_tile_key = "") -> int` — meilleur yield d'un survivant pour une activité, sur les tuiles workables compatibles ; exclut optionnellement une tuile (utilisé par le popup d'affectation pour révéler le "meilleur ailleurs")
+- `best_yield_all_survivors(activity) -> int` — meilleur yield tous éveillés × toutes tuiles confondus (échelle absolue affichée en en-tête de section du popup)
 **Autres fonctions :**
 `can_wake(id)`, `can_targeted_wake()`, `awake_count()`, `awake_survivors()`, `survivors()`, `electricity_consumed_this_turn()`, `_find_building_by_type(type_id)`, `_find_building_by_instance(instance_id)`, `_remove_survivor_from_assignments(s)`, [...]
  
@@ -252,9 +263,26 @@ sprites des workers, icônes de production, popup d'assignation par activité au
 Deux passes de rendu (backgrounds puis sprites/icônes par-dessus).
  
 **Fonctions clés :**
-- `_open_tile_popup(tile_key, popup_position)` — popup avec sous-menu par survivant éveillé listant les activités disponibles sur la tuile
-**Autres fonctions :** `_rebuild()`, `_draw_hex_background(tile, center)`, `_render_tile_worker(tile, center)` ⚠️ duplique le chargement de sprite (voir Dette), `_hex_to_pixel(q, r)`, `_hex_polygon_points()`, `_on_main_popup_selected(index)`, `_on_submenu_selected(index, sub)`
- 
+- `_open_tile_popup(tile_key, popup_position)` — délègue à `TileAssignmentPopup.open()` (le param `popup_position` est ignoré depuis la Phase 11, le popup est centré)
+**Autres fonctions :** `_rebuild()`, `_draw_hex_background(tile, center)`, `_render_tile_worker(tile, center)` ⚠️ duplique le chargement de sprite (voir Dette), `_hex_to_pixel(q, r)`, `_hex_polygon_points()`
+
+### scenes/ui/tile_assignment_popup.gd
+`class_name TileAssignmentPopup` extends PopupPanel — Popup d'affectation à une
+tuile de carte. Matrice activités × persos éveillés (une row par activité, colonnes
+= slots persos triés dispo/séparateur/occupés). Popup fixe centré, taille adaptée
+au nombre d'activités de la tuile. `ScrollContainer` horizontal indépendant par
+activité si beaucoup de persos. Auto-cleanup au `popup_hide`.
+
+**Fonctions clés :**
+- `static open(parent, tile, popup_position = Vector2.ZERO) -> TileAssignmentPopup` — construit et centre le popup (param `popup_position` gardé pour compat MapView, ignoré)
+- `_activity_row(activity, available, occupied) -> Control` — une row : header d'activité fixe + `ScrollContainer` H des slots persos, avec filtre pertinence sur les occupés (ceux qui font déjà cette activité ailleurs sont masqués)
+- `_survivor_slot(s, y, activity, is_occupied, is_best) -> Control` — slot MapView-like (hex de la couleur de la tuile, icônes yield en fond, sprite dessus, teinte verte si meilleur candidat)
+- `_compute_target_size() -> Vector2i` — largeur adaptée à `MAX_VISIBLE_COLS`, hauteur au nombre d'activités
+
+**Autres fonctions :** `_build()`, `_activity_header(activity)`, `_survivor_header_text(s)`, `_build_trait_lines(s)`, `_format_output(s)`, `_muted_label(text)`, `_vsep_narrow()`, `_is_available(s)`, `_current_activity_context(s)`, `_hex_polygon_points()`, `_on_clear_pressed()`, `_on_activity_selected(sid, aid)`
+
+**Classe interne :** `RichHoverSlot extends Control` — slot cliquable avec `_make_custom_tooltip` renvoyant un `RichTextLabel` BBCode (dup pattern `SurvivorsView.SurvivorSprite`). 
+
 ### scenes/ui/production_view.gd
 `class_name ProductionView` extends Control — Tableau 4 colonnes (net/consommé/stock/
 impossible) + ligne des activités risquées. Lit `TurnResolver.compute_flow()`.

@@ -30,9 +30,6 @@ const TILE_LABEL_KEYS := {
 }
 
 var _map_container: Control
-var _tile_popup: PopupMenu
-var _popup_submenus: Array[PopupMenu] = []
-var _popup_tile_key: String = ""
 
 func _ready() -> void:
 	_build()
@@ -217,89 +214,7 @@ func _hex_polygon_points() -> PackedVector2Array:
 # ── Popups ──
 
 func _open_tile_popup(tile_key: String, popup_position: Vector2) -> void:
-	_popup_tile_key = tile_key
 	var tile: HexTile = GameState.hex_map.get_tile_by_key(tile_key)
 	if tile == null:
 		return
-
-	# Nettoyage de l'ancien popup et de ses sous-menus
-	if _tile_popup != null:
-		_tile_popup.queue_free()
-	for sub in _popup_submenus:
-		if sub != null:
-			sub.queue_free()
-	_popup_submenus.clear()
-
-	_tile_popup = PopupMenu.new()
-	add_child(_tile_popup)
-
-	# Option Clear
-	if tile.worker_id != -1:
-		_tile_popup.add_item(tr("LABEL_CLEAR_TILE"))
-		_tile_popup.set_item_metadata(_tile_popup.item_count - 1, {"action": "clear"})
-		_tile_popup.add_separator()
-
-	# Pour chaque éveillé : un sous-menu avec les activités disponibles
-	var any_available := false
-	for s in GameState.awake_survivors():
-		var sub := PopupMenu.new()
-		sub.name = "sub_" + str(s.id)
-		_tile_popup.add_child(sub)
-		_popup_submenus.append(sub)
-
-		for activity in GameState.activity_registry.available_for_tile(tile.type):
-			var yield_val: float = GameState.expected_activity_yield(s, tile, activity)
-			var label_text: String
-			if activity.success_rate < 1.0:
-				label_text = "%s  (+%.0f, %d%%)" % [tr(activity.name_key), yield_val, int(activity.success_rate * 100)]
-			else:
-				label_text = "%s  (+%.0f)" % [tr(activity.name_key), yield_val]
-			sub.add_item(label_text)
-			sub.set_item_metadata(sub.item_count - 1, {"survivor_id": s.id, "activity_id": activity.id})
-
-		sub.id_pressed.connect(_on_submenu_selected.bind(sub))
-
-		# Indication d'emplacement courant du colon
-		var location_hint := ""
-		if s.tile_key != "" and s.tile_key != tile_key:
-			var current_tile: HexTile = GameState.hex_map.get_tile_by_key(s.tile_key)
-			if current_tile != null:
-				location_hint = "  ← " + UiPresentation.activity(s) + " @ " + UiPresentation.tile_label(s.tile_key)
-		elif s.building_id != "":
-			var b: Building = GameState._find_building_by_type(s.building_id)
-			if b != null:
-				location_hint = "  ← " + UiPresentation.activity_for_building(b.config.id) + " @ " + tr(b.config.name_key)
-		elif s.tile_key == tile_key:
-			location_hint = "  " + tr("LABEL_HERE")
-		else:
-			location_hint = "  (" + tr("LABEL_IDLE") + ")"
-		_tile_popup.add_submenu_item("%s (%s)%s" % [s.name, Roster.display_name(s.profession), location_hint], sub.name)
-		any_available = true
-
-	if not any_available and tile.worker_id == -1:
-		_tile_popup.add_item(tr("LABEL_NO_WORKER"))
-		_tile_popup.set_item_disabled(_tile_popup.item_count - 1, true)
-
-	_tile_popup.id_pressed.connect(_on_main_popup_selected)
-	_tile_popup.position = Vector2i(popup_position)
-	_tile_popup.popup()
-
-func _on_main_popup_selected(index: int) -> void:
-	var meta = _tile_popup.get_item_metadata(index)
-	if meta == null:
-		return
-	if meta.has("action") and meta["action"] == "clear":
-		var tile: HexTile = GameState.hex_map.get_tile_by_key(_popup_tile_key)
-		if tile != null and tile.worker_id != -1:
-			GameState.unassign_from_tile(tile.worker_id)
-	_popup_tile_key = ""
-
-func _on_submenu_selected(index: int, sub: PopupMenu) -> void:
-	var meta = sub.get_item_metadata(index)
-	if meta == null:
-		return
-	var survivor_id: int = meta["survivor_id"]
-	var act_id: String = meta["activity_id"]
-	GameState.assign_activity(survivor_id, act_id)
-	GameState.assign_to_tile(survivor_id, _popup_tile_key)
-	_popup_tile_key = ""
+	TileAssignmentPopup.open(self, tile, popup_position)
