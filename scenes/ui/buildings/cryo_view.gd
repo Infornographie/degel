@@ -68,15 +68,11 @@ func _rebuild(_a = null, _b = null, _c = null, _d = null) -> void:
 	_count_label.text = tr("LABEL_STILL_IN_CRYO") % GameState.roster.sleeping_count()
 
 func _make_candidate_card(s: Survivor) -> Control:
-	var tooltip := "%s\n%s\n\n%s" % [
-		s.name,
-		Roster.display_name(s.profession),
-		tr("BTN_WAKE") % GameState.config.wake_cost,
-	]
 	var vbox := VBoxContainer.new()
 	vbox.add_theme_constant_override("separation", 2)
 	# Sprite couché (rotation pour évoquer la chambre cryo)
-	var sprite := UiPresentation.survivor_sprite(s, tooltip)
+	var sprite := SurvivorSpriteWidget.new()
+	sprite.setup(s)
 	sprite.pivot_offset = sprite.custom_minimum_size * 0.5
 	sprite.rotation = deg_to_rad(CANDIDATE_SPRITE_ROTATION_DEG)
 	var sprite_wrap := Control.new()

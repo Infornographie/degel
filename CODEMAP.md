@@ -249,6 +249,23 @@ plutôt que `tr()` (inaccessible en `static func`).
 - `show_popup(parent, title, message) -> void` — AcceptDialog générique
 **Autres fonctions :** `resource(resource_name)`, `placeholder_color(resource_name)`, `tile_label(key)`, `activity_for_building(building_id)`, `activity(s)`, `slot_panel(is_bunker)`, `slot_title(text)`
  
+### scenes/ui/survivor_sprite_widget.gd
+`class_name SurvivorSpriteWidget` extends TextureRect — Widget centralisé de rendu
+d'un sprite survivant : chargement (profession ou fallback), tooltip riche BBCode
+(nom + profession + rôle + location + prod + traits colorés), badge d'état
+(fatigue en coin haut-droit), signal `clicked` optionnel.
+
+Contrat : `setup(s, sprite_scale=4, capture_clicks=false, click_hint_key="") -> void`
+à appeler une fois après `new()`. Pour rafraîchir, queue_free + recréer.
+
+`capture_clicks=false` (défaut) : `mouse_filter=PASS`, tooltip actif, le clic file
+au parent (usage MapView / TileAssignmentPopup / SurvivorsView / CryoView).
+`capture_clicks=true` : `mouse_filter=STOP`, émet `clicked(survivor_id)` au clic
+gauche (usage assigned_worker_sprite pour désassigner d'un bâtiment).
+
+Migrations en cours (chantier UI Colonization) : CryoView migré, restent MapView,
+SurvivorsView, TileAssignmentPopup, et l'adaptation de `UiPresentation.assigned_worker_sprite`.
+
 ### scenes/ui/colony_view.gd
 `class_name ColonyView` extends Control — Grille 4×3 des bâtiments. Starters à emplacements
 fixes (`STARTER_SLOTS`), autres selon `slot_index`. Délègue le rendu d'un slot occupé à
@@ -294,12 +311,9 @@ impossible) + ligne des activités risquées. Lit `TurnResolver.compute_flow()`.
  
 ### scenes/ui/survivors_view.gd
 `class_name SurvivorsView` extends Control — Liste des survivants éveillés, triés par
-ordre de réveil, tooltip riche (rôle, location, prod, traits). Contient une classe interne
-`SurvivorSprite` (TextureRect avec tooltip custom riche).
- 
-**Fonctions clés :** `_rebuild()`, `_add_row(s)`, `_build_trait_lines(s) -> Array` (ordonne STATE → NATURE → EVENT), `_format_output(s) -> String`
- 
-**Autres fonctions :** `_load_survivor_texture(s)`
+ordre de réveil. Sprites délégués à `SurvivorSpriteWidget` (tooltip riche + badge fatigue).
+
+**Fonctions clés :** `_rebuild()`, `_add_row(s)`
  
 ### scenes/ui/infos_section.gd
 `class_name InfosSection` extends Control — Panneau tour/électricité/famine + journal
@@ -343,8 +357,8 @@ ciblée par profession (bouton "discuter" en placeholder, tutoriel narratif pré
 - `setup(b)` — la vue ne se reconstruit pas réellement (`_rebuild` est un `pass`, commenté comme volontaire tant que la vue n'affiche rien de plus)
 ### scenes/ui/buildings/cryo_view.gd
 `class_name CryoView` extends Control — Pool de candidats à réveiller (sprites inclinés
-type "chambre cryo") + compteur de cryogénisés restants. La recherche ciblée vit dans
-`ComputerView`, pas ici.
+type "chambre cryo" via `SurvivorSpriteWidget`) + compteur de cryogénisés restants.
+La recherche ciblée vit dans `ComputerView`, pas ici.
 - `setup(b)`, `_rebuild()`, `_make_candidate_card(s)`
 ### scenes/ui/buildings/construction_zone_view.gd
 `class_name ConstructionZoneView` extends Control — Workers assignés, cible de
