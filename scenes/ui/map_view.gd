@@ -178,23 +178,17 @@ func _render_tile_worker(tile: HexTile, center: Vector2) -> void:
 		icons_row.size = Vector2(HEX_RADIUS * 2.0, TILE_PROD_ICON_SIZE)
 		icons_row.position = center - Vector2(HEX_RADIUS, HEX_RADIUS * 0.7)
 		_map_container.add_child(icons_row)
-	# Sprite du worker PAR-DESSUS, centré
-	var sprite := TextureRect.new()
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var prof := Roster.get_profession(s.profession)
-	if prof != null and prof.sprite != null:
-		sprite.texture = prof.sprite
-	else:
-		sprite.texture = load(UiPresentation.SURVIVOR_SPRITE_PATH % s.sprite_variant)
-		sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
-	var sprite_size: Vector2 = tex_size * WORKER_SPRITE_SCALE
+	# Sprite du worker PAR-DESSUS, centré. Capture le clic (le sprite est
+	# au-dessus du click_area de la tuile) et relaie vers _open_tile_popup —
+	# cliquer un colon ouvre le popup d'affectation de sa tuile.
+	var sprite := SurvivorSpriteWidget.new()
+	sprite.setup(s, WORKER_SPRITE_SCALE, true)
+	var sprite_size: Vector2 = sprite.custom_minimum_size
 	sprite.size = sprite_size
 	sprite.position = center - sprite_size * 0.5 + Vector2(0, HEX_RADIUS * 0.15)
+	if tile.type != HexTile.Type.BUNKER:
+		var tkey := tile.key()
+		sprite.clicked.connect(func(_sid): _open_tile_popup(tkey, Vector2.ZERO))
 	_map_container.add_child(sprite)
 
 func _hex_to_pixel(q: int, r: int) -> Vector2:

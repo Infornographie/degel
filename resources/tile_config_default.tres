@@ -7,12 +7,12 @@ script = ExtResource("1_s4xpt")
 plains_ratio = 0.0
 forest_ratio = 0.8
 plains_yields = Dictionary[String, float]({
-"gardener": 4.0,
+"gardener": 5.0,
 "gathering": 3.0,
 "wood_picker": 1.0
 })
 forest_yields = Dictionary[String, float]({
-"gathering": 3.0,
+"gathering": 4.0,
 "hunting": 6.0,
 "lumberjack": 6.0,
 "ore_picker": 1.0,

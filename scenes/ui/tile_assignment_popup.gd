@@ -26,38 +26,17 @@ const TILE_COLORS := {
 var _tile: HexTile
 
 # ──────────────────────────────────────────────────────────────────────────
-#  INNER CLASS : slot cliquable avec tooltip riche coloré
+#  INNER CLASS : slot hexagonal cliquable, tooltip délégué au widget
 # ──────────────────────────────────────────────────────────────────────────
-# DETTE : duplique le pattern SurvivorsView.SurvivorSprite (header + trait_lines
-# + _make_custom_tooltip). À unifier en task 2 (factorisation SurvivorSprite).
+# Le tooltip riche est construit par SurvivorSpriteWidget.build_rich_tooltip
+# (fonction statique). Le slot ne fait que fournir une zone de hover plus
+# large que le sprite (les coins de l'hex qui débordent du sprite).
 
 class RichHoverSlot extends Control:
-	var header_text: String = ""
-	var trait_lines: Array = []
+	var survivor: Survivor
 
 	func _make_custom_tooltip(_for_text):
-		var rtl := RichTextLabel.new()
-		rtl.bbcode_enabled = true
-		rtl.fit_content = true
-		rtl.custom_minimum_size = Vector2(320, 0)
-		var content: String = header_text
-		for line in trait_lines:
-			var name_bb := "[color=%s]%s[/color]" % [line.color, line.name]
-			if line.description != "":
-				content += "\n%s [color=#888888]— %s[/color]" % [name_bb, line.description]
-			else:
-				content += "\n" + name_bb
-		rtl.text = content
-		return rtl
-
-
-# Mapping color_hint → hex (copie SurvivorsView, même dette)
-const TRAIT_COLORS := {
-	"neutral": "#dddddd",
-	"positive": "#7dd68f",
-	"negative": "#e08a7a",
-	"story": "#c9a3ea",
-}
+		return SurvivorSpriteWidget.build_rich_tooltip(survivor)
 
 func _hex_polygon_points() -> PackedVector2Array:
 	var points := PackedVector2Array()
@@ -243,12 +222,11 @@ func _activity_header(activity: Activity) -> Control:
 func _survivor_slot(s: Survivor, y: int, activity: Activity, is_occupied: bool, is_best: bool) -> Control:
 	var tile_bbox: float = HEX_RADIUS * 2.0
 	var slot := RichHoverSlot.new()
+	slot.survivor = s
 	slot.custom_minimum_size = Vector2(tile_bbox, tile_bbox)
 	slot.mouse_filter = Control.MOUSE_FILTER_STOP
 	slot.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-	slot.header_text = _survivor_header_text(s)
-	slot.trait_lines = _build_trait_lines(s)
-	slot.tooltip_text = " "  # hack Godot : nécessite un texte non-vide pour activer _make_custom_tooltip
+	slot.tooltip_text = " "  # nécessaire pour déclencher _make_custom_tooltip
 
 	var center: Vector2 = Vector2(tile_bbox * 0.5, tile_bbox * 0.5)
 
@@ -277,18 +255,10 @@ func _survivor_slot(s: Survivor, y: int, activity: Activity, is_occupied: bool, 
 	icons_row.position = center - Vector2(HEX_RADIUS, HEX_RADIUS * 0.7)
 	slot.add_child(icons_row)
 
-	# Sprite par-dessus
-	var sprite := TextureRect.new()
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var prof := Roster.get_profession(s.profession)
-	if prof != null and prof.sprite != null:
-		sprite.texture = prof.sprite
-	else:
-		sprite.texture = load(UiPresentation.SURVIVOR_SPRITE_PATH % s.sprite_variant)
-	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
-	var sprite_size: Vector2 = tex_size * WORKER_SPRITE_SCALE
+	# Sprite via widget centralisé (mode PASS : le clic file au slot parent)
+	var sprite := SurvivorSpriteWidget.new()
+	sprite.setup(s, WORKER_SPRITE_SCALE)
+	var sprite_size: Vector2 = sprite.custom_minimum_size
 	sprite.size = sprite_size
 	sprite.position = center - sprite_size * 0.5 + Vector2(0, HEX_RADIUS * 0.15)
 	slot.add_child(sprite)
@@ -302,62 +272,6 @@ func _survivor_slot(s: Survivor, y: int, activity: Activity, is_occupied: bool, 
 		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			_on_activity_selected(sid, aid))
 	return slot
-
-## Copie du header text de SurvivorsView._add_row (pattern BBCode).
-func _survivor_header_text(s: Survivor) -> String:
-	var location: String
-	if s.tile_key != "":
-		location = tr("LABEL_AT_TILE") + UiPresentation.tile_label(s.tile_key)
-	elif s.building_id != "":
-		var b: Building = GameState._find_building_by_type(s.building_id)
-		if b != null:
-			location = tr("LABEL_AT_TILE") + tr(b.config.name_key) + " " + tr("LABEL_IN_SETTLEMENT_BRACKETS")
-		else:
-			location = tr("LABEL_IN_SETTLEMENT")
-	else:
-		location = tr("LABEL_IDLE_IN_SETTLEMENT")
-
-	var role: String = UiPresentation.activity(s)
-	var prod := _format_output(s)
-
-	var header := "[b]%s[/b] (%s)\n%s — %s" % [
-		s.name,
-		Roster.display_name(s.profession),
-		role,
-		location,
-	]
-	if prod != "":
-		header += "\n\n→ " + prod
-	return header
-
-func _build_trait_lines(s: Survivor) -> Array:
-	var ordered_categories := [
-		TraitConfig.Category.STATE,
-		TraitConfig.Category.NATURE,
-		TraitConfig.Category.EVENT,
-	]
-	var lines: Array = []
-	for cat in ordered_categories:
-		for t in s.traits:
-			if t.category != cat:
-				continue
-			var color: String = TRAIT_COLORS.get(t.color_hint, "#dddddd")
-			var desc: String = tr(t.description_key) if t.description_key != "" else ""
-			lines.append({
-				"name": tr(t.name_key),
-				"description": desc,
-				"color": color,
-			})
-	return lines
-
-func _format_output(s: Survivor) -> String:
-	var out: Dictionary = GameState.get_survivor_output(s)
-	if out.is_empty():
-		return ""
-	var parts: Array[String] = []
-	for resource_name in out:
-		parts.append("+%.0f %s" % [out[resource_name], resource_name])
-	return ", ".join(parts)
 
 func _muted_label(text: String) -> Label:
 	var l := Label.new()

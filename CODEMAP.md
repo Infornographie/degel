@@ -16,9 +16,6 @@ Dernière génération : à partir du commit `[commit à venir]` (Popup d'affect
 Ces éléments ne sont pas corrigés ici — ce sont des observations remontées pour arbitrage,
 conformément à la règle 5 (nommer la dette). À ajouter à la ROADMAP si tu valides.
  
-1. **`scenes/ui/map_view.gd::_render_tile_worker()`** recharge le sprite du survivant en
-   inline au lieu d'appeler `UiPresentation.survivor_sprite()`, qui fait exactement ça.
-   Duplication de logique (règle 3).
 2. **Dette déjà nommée dans le code** (remontée ici pour visibilité, déjà correctement
    commentée par toi) :
    - `GameState._find_trait()` : lookup linéaire dans `GameRegistry.traits`, commenté
@@ -244,7 +241,7 @@ plutôt que `tr()` (inaccessible en `static func`).
 - `resource_icon(resource_name, icon_size) -> Control` — icône ressource, fallback ColorRect si pas d'icône
 - `production_icon(resource_name, overlay) -> Control` — icône + overlay (surplus/deficit/crossed)
 - `survivor_sprite(s, tooltip) -> TextureRect` — sprite standard d'un survivant (⚠️ dupliqué en inline dans `map_view.gd`, voir Dette)
-- `assigned_worker_sprite(s) -> Control` — sprite cliquable pour désassigner d'un bâtiment
+- `assigned_worker_sprite(s)` — wrapper autour de `SurvivorSpriteWidget` : sprite cliquable (unassign_from_building) avec tooltip riche et hint "cliquer pour désassigner"
 - `open_building_popup(parent, b, popup_position) -> void` — popup d'affectation à un bâtiment opérationnel
 - `show_popup(parent, title, message) -> void` — AcceptDialog générique
 **Autres fonctions :** `resource(resource_name)`, `placeholder_color(resource_name)`, `tile_label(key)`, `activity_for_building(building_id)`, `activity(s)`, `slot_panel(is_bunker)`, `slot_title(text)`

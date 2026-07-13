@@ -9,8 +9,6 @@ class_name UiPresentation
 
 const RESOURCE_SPRITE_SIZE: int = 32
 const OVERLAY_PATH := "res://assets/resources/%s.png"
-const SURVIVOR_SPRITE_PATH := "res://assets/survivors/generic%d.png"
-const SURVIVOR_SPRITE_SCALE: int = 4
 const SLOT_BUNKER_COLOR := Color("#2a2e3a")
 const SLOT_COLONY_COLOR := Color("#3a322a")
 const SLOT_MIN_SIZE := Vector2(140, 100)
@@ -107,26 +105,6 @@ static func production_icon(resource_name: String, overlay: String) -> Control:
 			stack.add_child(ph)
 	return stack
 
-## Sprite d'un survivant à sa taille standard, avec tooltip et hover actif.
-## Utilisé par la liste des éveillés, la carte de candidat cryo, la map et la
-## colony view (via le helper assigned_worker_sprite encore dans main_ui).
-static func survivor_sprite(s: Survivor, sprite_tooltip: String) -> TextureRect:
-	var sprite := TextureRect.new()
-	# Sprite spécifique à la profession si défini, fallback générique sinon
-	# (toutes les Profession.tres n'ont pas encore leur sprite).
-	var prof := Roster.get_profession(s.profession)
-	if prof != null and prof.sprite != null:
-		sprite.texture = prof.sprite
-	else:
-		sprite.texture = load(SURVIVOR_SPRITE_PATH % s.sprite_variant)
-	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sprite.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST  # pour pixel art net
-	var tex_size: Vector2 = (sprite.texture as Texture2D).get_size()
-	sprite.custom_minimum_size = tex_size * SURVIVOR_SPRITE_SCALE
-	sprite.tooltip_text = sprite_tooltip
-	sprite.mouse_filter = Control.MOUSE_FILTER_STOP  # pour que hover/clic marche
-	return sprite
-
 ## Affiche un AcceptDialog modal centré. `parent` doit être un Node de la
 ## scène courante (typiquement la vue qui appelle, ou MainUi).
 static func show_popup(parent: Node, title: String, message: String) -> void:
@@ -162,20 +140,12 @@ static func slot_title(text: String) -> Label:
 	label.add_theme_font_size_override("font_size", 13)
 	return label
 
-## Sprite d'un survivant assigné à un bâtiment, cliquable pour le désassigner.
 static func assigned_worker_sprite(s: Survivor) -> Control:
-	var tooltip := "%s\n%s\n\n%s" % [
-		s.name,
-		Roster.display_name(s.profession),
-		TranslationServer.translate("TOOLTIP_CLICK_TO_UNASSIGN"),
-	]
-	var sprite := survivor_sprite(s, tooltip)
-	sprite.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	var widget := SurvivorSpriteWidget.new()
+	widget.setup(s, 4, true, "TOOLTIP_CLICK_TO_UNASSIGN")
 	var sid := s.id
-	sprite.gui_input.connect(func(event: InputEvent):
-		if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-			GameState.unassign_from_building(sid))
-	return sprite
+	widget.clicked.connect(func(_id): GameState.unassign_from_building(sid))
+	return widget
 
 ## Popup d'affectation d'un worker à un bâtiment opérationnel. Liste les
 ## éveillés avec leur localisation actuelle. Auto-cleanup à la fermeture.
