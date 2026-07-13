@@ -67,15 +67,15 @@ func _hex_polygon_points() -> PackedVector2Array:
 	return points
 
 static func open(parent: Node, tile: HexTile, _popup_position: Vector2 = Vector2.ZERO) -> TileAssignmentPopup:
-	var popup := TileAssignmentPopup.new()
-	parent.add_child(popup)
-	popup._tile = tile
-	popup._build()
-	popup.popup_hide.connect(popup.queue_free)
-	var target := popup._compute_target_size()
-	popup.popup_centered(target)
-	popup.size = target
-	return popup
+	var instance := TileAssignmentPopup.new()
+	parent.add_child(instance)
+	instance._tile = tile
+	instance._build()
+	instance.popup_hide.connect(instance.queue_free)
+	var target := instance._compute_target_size()
+	instance.popup_centered(target)
+	instance.size = target
+	return instance
 
 func _build() -> void:
 	# Fond opaque
@@ -100,11 +100,11 @@ func _build() -> void:
 
 	# Header : titre + bouton clear
 	var header := HBoxContainer.new()
-	var title := Label.new()
-	title.text = tr("POPUP_TILE_ASSIGN_TITLE") + " — " + UiPresentation.tile_label(_tile.key())
-	title.add_theme_font_size_override("font_size", 14)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
+	var title_label := Label.new()
+	title_label.text = tr("POPUP_TILE_ASSIGN_TITLE") + " — " + UiPresentation.tile_label(_tile.key())
+	title_label.add_theme_font_size_override("font_size", 14)
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title_label)
 	if _tile.worker_id != -1:
 		var clear_btn := Button.new()
 		clear_btn.text = tr("LABEL_CLEAR_TILE")
@@ -386,6 +386,8 @@ func _on_clear_pressed() -> void:
 	hide()
 
 func _on_activity_selected(survivor_id: int, activity_id: String) -> void:
-	GameState.assign_activity(survivor_id, activity_id)
+	# Ordre important : la tuile d'abord (assign_to_tile efface activity_id
+	# via _remove_survivor_from_assignments), l'activité ensuite.
 	GameState.assign_to_tile(survivor_id, _tile.key())
+	GameState.assign_activity(survivor_id, activity_id)
 	hide()

@@ -120,12 +120,14 @@ func survivors() -> Array[Survivor]:
 	return roster.survivors
 
 ## Production attendue si ce survivant faisait cette activité sur cette tuile.
-## Helper d'UI — passe par TurnResolver pour le calcul unique (traits agrégés).
+## Helper d'UI — passe l'activité cible à TurnResolver pour évaluation
+## hypothétique du trait `tired` (ne pas afficher une pénalité qui aurait
+## été retirée par l'assignation).
 func expected_activity_yield(s: Survivor, tile: HexTile, activity: Activity) -> int:
 	if s == null or tile == null or activity == null:
 		return 0
 	var raw: float = tile.yields.get(activity.id, 0.0)
-	return int(turn_resolver.compute_activity_yield(raw, s, activity.produced_resource))
+	return int(turn_resolver.compute_activity_yield(raw, s, activity.produced_resource, StringName(activity.id)))
 
 ## Meilleur yield attendu de ce survivant pour cette activité, sur les tuiles
 ## workables de type compatible. `exclude_tile_key` sert au format N/M du popup
@@ -189,6 +191,8 @@ func can_wake(id: int) -> bool:
 	return true
 
 ## Affecte une activité à un colon. Renvoie true si succès.
+## Toute mutation d'activity_id doit être suivie d'un enforce_tired_invariant
+## pour que le trait `tired` reflète immédiatement la nouvelle situation.
 func assign_activity(survivor_id: int, new_activity_id: String) -> bool:
 	if is_over:
 		return false
@@ -196,6 +200,7 @@ func assign_activity(survivor_id: int, new_activity_id: String) -> bool:
 	if s == null or not s.awake:
 		return false
 	s.activity_id = new_activity_id
+	turn_resolver.enforce_tired_invariant(s)
 	survivor_assigned.emit(s, new_activity_id)
 	return true
 
@@ -230,6 +235,8 @@ func unassign_from_tile(survivor_id: int) -> bool:
 		tile.worker_id = -1
 		tile_assignment_changed.emit(tile)
 	s.tile_key = ""
+	s.activity_id = ""
+	turn_resolver.enforce_tired_invariant(s)
 	return true
 
 ## Affecte un colon éveillé à un bâtiment. Renvoie true si succès.
@@ -266,6 +273,8 @@ func unassign_from_building(survivor_id: int) -> bool:
 	return true
 
 ## Helper : retire un colon de partout où il est assigné (tuile ou bâtiment).
+## Nettoie aussi `activity_id` — il ne survit pas au départ. Reconciliation
+## du trait `tired` déléguée à `TurnResolver`.
 func _remove_survivor_from_assignments(s: Survivor) -> void:
 	if s.tile_key != "":
 		var t: HexTile = hex_map.get_tile_by_key(s.tile_key)
@@ -279,6 +288,8 @@ func _remove_survivor_from_assignments(s: Survivor) -> void:
 			b.worker_ids.erase(s.id)
 			building_assignment_changed.emit(b)
 		s.building_id = ""
+	s.activity_id = ""
+	turn_resolver.enforce_tired_invariant(s)
 
 # ── BOUCLE DE TOUR ──
 func advance_turn() -> void:

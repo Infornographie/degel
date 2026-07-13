@@ -385,24 +385,48 @@ func _build_order(target: Building) -> Array:
 	return order
 
 ## Calcul unique de la production d'un survivant pour une activité donnée.
-## Le multiplicateur agrégé des traits (dont famished le cas échéant) est
-## calculé par `_activity_modifier`. Ne s'applique PAS le success_rate.
-func compute_activity_yield(raw: float, s: Survivor, produced_resource: String) -> float:
-	return round(raw * _activity_modifier(s, produced_resource))
+## Le multiplicateur agrégé des traits est calculé par `_activity_modifier`.
+## Ne s'applique PAS le success_rate. `target_activity_id` permet d'évaluer
+## une réaffectation hypothétique (voir `_activity_modifier`).
+func compute_activity_yield(raw: float, s: Survivor, produced_resource: String, target_activity_id: StringName = &"") -> float:
+	return round(raw * _activity_modifier(s, produced_resource, target_activity_id))
 
 # ──────────────────────────────────────────────────────────────────────────
 #  MODIFIERS TRAITS (helpers centralisés — une logique, un endroit)
 # ──────────────────────────────────────────────────────────────────────────
 
 ## Modifier d'activité : produit de tous les traits du survivant, pour la
-## ressource produite par l'activité.
-func _activity_modifier(s: Survivor, resource_name: String) -> float:
+## ressource produite par l'activité. `target_activity_id` permet d'évaluer
+## de manière hypothétique — si l'activité cible diffère de `s.activity_id`,
+## on simule la reconciliation qui aurait lieu à l'assignation (pose ou
+## retrait de `tired` selon l'invariante). Défaut : évalue avec l'activité
+## actuelle (comportement standard, invariante déjà respectée).
+func _activity_modifier(s: Survivor, resource_name: String, target_activity_id: StringName = &"") -> float:
 	if s == null:
 		return 1.0
+	var target: StringName = target_activity_id if target_activity_id != &"" else StringName(s.activity_id)
+	var would_be_tired: bool = (
+		s.fatigue_streak >= FATIGUE_THRESHOLD
+		and target != &""
+		and target == s.last_activity_id
+	)
 	var res: StringName = StringName(resource_name)
 	var total: float = 1.0
+	var tired_seen: bool = false
 	for t in s.traits:
+		if t.id == &"tired":
+			tired_seen = true
+			if would_be_tired:
+				total *= t.activity_modifier_for(res)
+			# sinon on skip : la reconciliation retirerait le trait
+			continue
 		total *= t.activity_modifier_for(res)
+	# Cas où le trait n'est pas encore posé mais serait ajouté par la
+	# reconciliation (ex : retour à l'ancienne activité avec streak déjà au seuil).
+	if would_be_tired and not tired_seen:
+		var tired_trait: TraitConfig = _get_trait_by_id(&"tired")
+		if tired_trait != null:
+			total *= tired_trait.activity_modifier_for(res)
 	return total
 
 ## Modifier de construction : produit de tous les traits du survivant.
@@ -444,33 +468,44 @@ func _add(dict: Dictionary, key: String, amount: float) -> void:
 ## Seuil de fatigue : après N tours consécutifs sur la même activité.
 const FATIGUE_THRESHOLD: int = 3
 
-## Met à jour le compteur de fatigue de chaque éveillé et pose/retire le trait
-## `tired`. À appeler UNE fois par tour, après la résolution de production.
+## Met à jour le compteur de fatigue de chaque éveillé, puis délègue à
+## `enforce_tired_invariant` la pose/retrait du trait `tired`.
+## À appeler UNE fois par tour, après la résolution de production.
 func _resolve_fatigue() -> void:
-	var tired_trait: TraitConfig = _get_trait_by_id(&"tired")
-	var normal_trait: TraitConfig = _get_trait_by_id(&"normal")
-	if tired_trait == null or normal_trait == null:
-		return  # traits pas encore créés, silencieux
 	for s in gs.awake_survivors():
 		var current: StringName = StringName(s.activity_id)
 		if current == &"":
-			# Pas d'activité ce tour : on remet à zéro
 			s.fatigue_streak = 0
 			s.last_activity_id = &""
-			if s.has_trait(&"tired"):
-				s.add_trait(normal_trait)
-			continue
-		if current == s.last_activity_id:
+		elif current == s.last_activity_id:
 			s.fatigue_streak += 1
 		else:
 			s.fatigue_streak = 1
-			# Changement d'activité : on repose normal si on était tired
-			if s.has_trait(&"tired"):
-				s.add_trait(normal_trait)
-		s.last_activity_id = current
-		# Pose du trait tired si seuil atteint
-		if s.fatigue_streak >= FATIGUE_THRESHOLD and not s.has_trait(&"tired"):
+			s.last_activity_id = current
+		enforce_tired_invariant(s)
+
+
+## Réconcilie l'état `tired` du survivant avec l'invariante :
+## has_trait("tired") ⇔ fatigue_streak ≥ FATIGUE_THRESHOLD
+##                     ET activity_id == last_activity_id
+##                     ET activity_id != ""
+## À appeler après toute mutation d'`activity_id` ou de `fatigue_streak`.
+## Silencieux tant que les traits `tired` / `normal` n'existent pas encore.
+func enforce_tired_invariant(s: Survivor) -> void:
+	var tired_trait: TraitConfig = _get_trait_by_id(&"tired")
+	var normal_trait: TraitConfig = _get_trait_by_id(&"normal")
+	if tired_trait == null or normal_trait == null:
+		return
+	var should_be_tired: bool = (
+		s.fatigue_streak >= FATIGUE_THRESHOLD
+		and s.activity_id != ""
+		and StringName(s.activity_id) == s.last_activity_id
+	)
+	if should_be_tired:
+		if not s.has_trait(&"tired"):
 			s.add_trait(tired_trait)
+	elif s.has_trait(&"tired"):
+		s.add_trait(normal_trait)
 
 
 # ──────────────────────────────────────────────────────────────────────────

@@ -72,6 +72,7 @@ les deux garantit que l'affichage ne ment jamais.
 - `execute_turn() -> void` — applique le tour réel : risky → tuiles → construction → bâtiments → mutations → fatigue → durées de traits
 - `gather_risky() -> Array` — activités risquées en cours, pour affichage séparé
 - `compute_activity_yield(raw, s, produced_resource) -> float` — calcul unique du rendement d'un survivant (agrège les modifiers de traits)
+- `enforce_tired_invariant(s) -> void` — pose ou retire le trait `tired` selon l'invariante (streak ≥ seuil ET activity_id == last_activity_id ET activity_id != ""). Appelé en interne par `_resolve_fatigue`, et par `GameState` après chaque mutation d'`activity_id`.
 **Autres fonctions :**
 `_init(game_state)`, `_resolve_risky()`, `_resolve_tile_production()`, `_resolve_construction()`, `_resolve_buildings_operation()`, `_resolve_tile_mutations()`, `_resolve_fatigue()`, `_resolve_trait_durations()`, `_building_operates(b) -> bool`, `_building_multiplier(b) -> float`, `_operation_factor(b, stock, bmult) -> float`, `_has_inputs(stock, inputs, scale) -> bool`, `_simulate_construction(stock, consumption)`, `_build_order(target) -> Array`, `_activity_modifier(s, resource_name) -> float`, `_construction_modifier(s) -> float`, `_building_output_modifier(b) -> float`, `_add(dict, key, amount)`, `_get_trait_by_id(id) -> TraitConfig`
  

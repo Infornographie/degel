@@ -49,8 +49,8 @@ func add_trait(t: TraitConfig) -> void:
 		for existing in traits:
 			if existing.category == TraitConfig.Category.STATE and existing.id != t.id:
 				to_remove.append(existing.id)
-		for id in to_remove:
-			remove_trait(id)
+		for trait_id in to_remove:
+			remove_trait(trait_id)
 	# Déjà présent : reset la durée uniquement
 	if has_trait(t.id):
 		if t.duration_turns > 0:
@@ -62,21 +62,21 @@ func add_trait(t: TraitConfig) -> void:
 		trait_durations[t.id] = t.duration_turns
 
 ## Retire un trait par id. Silencieux si absent.
-func remove_trait(id: StringName) -> void:
+func remove_trait(trait_id: StringName) -> void:
 	for i in range(traits.size() - 1, -1, -1):
-		if traits[i].id == id:
+		if traits[i].id == trait_id:
 			traits.remove_at(i)
 			break
-	trait_durations.erase(id)
+	trait_durations.erase(trait_id)
 
-func has_trait(id: StringName) -> bool:
+func has_trait(trait_id: StringName) -> bool:
 	for t in traits:
-		if t.id == id:
+		if t.id == trait_id:
 			return true
 	return false
 
-func get_trait(id: StringName) -> TraitConfig:
+func get_trait(trait_id: StringName) -> TraitConfig:
 	for t in traits:
-		if t.id == id:
+		if t.id == trait_id:
 			return t
 	return null
