@@ -3,6 +3,8 @@ extends Node
 
 var activity_registry: ActivityRegistry
 var turn_resolver: TurnResolver
+var event_manager: EventManager
+var chronicle: Chronicle
 
 enum EndCause { REACTOR_DEAD, COLONY_LOST }
 
@@ -21,6 +23,10 @@ signal tile_assignment_changed(tile: HexTile)
 signal run_ended(cause: EndCause)
 signal building_assignment_changed(building: Building)
 signal construction_started(building: Building)
+@warning_ignore("unused_signal")
+signal event_queued(event: EventConfig)
+@warning_ignore("unused_signal")
+signal event_resolved(event: EventConfig)
 @warning_ignore("unused_signal")
 signal construction_progressed(building: Building)
 @warning_ignore("unused_signal")
@@ -102,6 +108,8 @@ func _ready() -> void:
 	roster = Roster.new(config.roster_size)
 	hex_map = HexMap.new(2, tile_config)
 	turn_resolver = TurnResolver.new(self)
+	chronicle = Chronicle.new(self)
+	event_manager = EventManager.new(self)
 
 	_init_starter_buildings()
 	_refill_candidates()
@@ -172,9 +180,11 @@ func wake(id: int) -> bool:
 	s.wake_order = _next_wake_order
 	if _next_wake_order == 0:
 		_apply_first_awakened(s)
+		event_manager.set_milestone(&"first_wake")
 	_next_wake_order += 1
 	survivor_woken.emit(s)
 	log_event("colony", "EVENT_WAKE", [s.name, "tr:" + Roster.name_key(s.profession)])
+	chronicle.record(&"wake", s.id, "", { "targeted": false })
 	candidates.erase(s.id)
 	_clean_candidates()
 	resources_changed.emit(resources)
@@ -201,6 +211,7 @@ func assign_activity(survivor_id: int, new_activity_id: String) -> bool:
 		return false
 	s.activity_id = new_activity_id
 	turn_resolver.enforce_tired_invariant(s)
+	chronicle.record(&"assign", s.id, new_activity_id)
 	survivor_assigned.emit(s, new_activity_id)
 	return true
 
@@ -257,6 +268,7 @@ func assign_to_building(survivor_id: int, building_id: String) -> bool:
 	# On l'affecte au nouveau bâtiment
 	target.worker_ids.append(survivor_id)
 	s.building_id = building_id
+	turn_resolver.enforce_tired_invariant(s)
 	building_assignment_changed.emit(target)
 	return true
 
@@ -270,6 +282,7 @@ func unassign_from_building(survivor_id: int) -> bool:
 		b.worker_ids.erase(survivor_id)
 		building_assignment_changed.emit(b)
 	s.building_id = ""
+	turn_resolver.enforce_tired_invariant(s)
 	return true
 
 ## Helper : retire un colon de partout où il est assigné (tuile ou bâtiment).
@@ -317,6 +330,7 @@ func advance_turn() -> void:
 			_deaths_triggered = false
 			_clear_famished()
 			famine_ended.emit()
+			chronicle.record(&"famine_ended")
 			log_event("system", "EVENT_FAMINE_ENDED", [])
 	else:
 		resources["food"] = 0.0
@@ -324,6 +338,7 @@ func advance_turn() -> void:
 		_apply_famished()
 		if not was_in_famine:
 			famine_started.emit()
+			chronicle.record(&"famine_started")
 			log_event("system", "EVENT_FAMINE_STARTED", [])
 		_resolve_famine_deaths()
 
@@ -395,6 +410,7 @@ func _extinguish(victim: Survivor) -> void:
 	}
 	necrology.append(entry)
 	_deaths_this_turn.append(entry)
+	chronicle.record(&"death", victim.id, "", { "cause": "switched_off" })
 	log_event("loss", "EVENT_DEATH_SWITCHED_OFF", [victim.name, "tr:" + Roster.name_key(victim.profession)])
 
 func _sleeping_survivors() -> Array[Survivor]:
@@ -440,6 +456,7 @@ func _resolve_famine_deaths() -> void:
 			}
 			necrology.append(entry)
 			_deaths_this_turn.append(entry)
+			chronicle.record(&"death", victim.id, "", { "cause": "starved" })
 			log_event("loss", "EVENT_DEATH_STARVED", [victim.name, "tr:" + Roster.name_key(victim.profession)])
 
 # ── HELPERS INTERNES ──
@@ -479,6 +496,7 @@ func targeted_wake(prof_id: StringName) -> bool:
 	var s: Survivor = roster.find_sleeping_by_profession_id(prof_id)
 	if s == null:
 		log_event("colony", "EVENT_TARGETED_WAKE_FAIL", ["tr:" + Roster.name_key(prof_id)])
+		chronicle.record(&"targeted_wake_failed", -1, "", { "profession": prof_id })
 		candidates_changed.emit()
 		resources_changed.emit(resources)
 		return false
@@ -487,11 +505,13 @@ func targeted_wake(prof_id: StringName) -> bool:
 	s.wake_order = _next_wake_order
 	if _next_wake_order == 0:
 		_apply_first_awakened(s)
+		event_manager.set_milestone(&"first_wake")
 	_next_wake_order += 1
 	survivor_woken.emit(s)
 	candidates.erase(s.id)
 	_clean_candidates()
 	log_event("colony", "EVENT_TARGETED_WAKE_SUCCESS", [s.name, "tr:" + Roster.name_key(s.profession)])
+	chronicle.record(&"targeted_wake", s.id, "", { "profession": prof_id })
 	resources_changed.emit(resources)
 	return true
 
@@ -539,6 +559,7 @@ func start_construction(target_type_id: String, slot_index: int) -> bool:
 	if zone != null:
 		zone.construction_target = str(b.instance_id)
 	construction_started.emit(b)
+	chronicle.record(&"construction_started", -1, target_type_id)
 	log_event("colony", "EVENT_CONSTRUCTION_STARTED", ["tr:" + target_config.name_key])
 	return true
 

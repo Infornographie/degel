@@ -143,6 +143,43 @@ Chantier UI Colonization en deux volets qui se sont imbriqués : le signal visue
 
 Build Windows exportable (BuildingRegistry/ActivityRegistry chargent via listes explicites, `DirAccess` ne marche pas dans les exe exportés).
 
+### Phase 13 — Système d'événements narratifs (Phase 1)
+
+Premier pipeline d'événements narratifs de bout en bout : data model, queue à priorité, déclenchement par milestones, popup de résolution avec verrouillage du tour suivant.
+
+- **`EventConfig` resource** (`systems/events/event_config.gd`) : id, title/body localisés, choices, priority/is_urgent/one_shot, trigger par milestone, prerequisites.
+- **`EventChoice` resource** (`systems/events/event_choice.gd`) : label localisé, effets ressources (`resource_effects`), traits à poser (`traits_to_add`). Phase 1 = effets globaux sur tous les éveillés ; targeting par survivant prévu en Phase 2.
+- **`EventManager`** (`systems/events/event_manager.gd`) : sous-système RefCounted de GameState. Gère les milestone flags, la queue triée (urgent > priority), le scan d'éligibilité, la résolution avec application des effets. `set_milestone(flag)` comme point d'entrée pour le déclenchement.
+- **`EventPopup`** (`scenes/ui/event_popup.gd`) : PopupPanel centré avec titre, corps narratif en RichTextLabel (BBCode prêt), boutons de choix. Fermeture sans résolution possible (Échap), le joueur revient via le bouton.
+- **UI ButtonsSection** : bouton "⚡ Événement" visible quand la queue est non vide, bouton "Tour suivant" grisé tant qu'il reste des events à résoudre.
+- **GameRegistry** étendu : `events: Array[EventConfig]`.
+- **Deux milestones posés** : `first_wake` (dans `wake()`/`targeted_wake()`), `first_deforestation` (dans `_resolve_tile_mutations()`).
+- **Deux events de test** : premier éveil (narratif du computer, 1 choix accusé de réception), première déforestation (avertissement écologique, 2 choix).
+- **6 clés i18n** ajoutées dans `translations.csv`, sections "ÉVÉNEMENTS NARRATIFS" et events individuels.
+
+### Phase 15 — Corrections bâtiments & fatigue
+
+- **Fix construction** : complétion avec epsilon (les accumulations flottantes retardaient d'un tour) ; `build_progress` mort supprimé.
+- **Fatigue en bâtiment** : clé d'occupation unifiée (`occupation_key`), même seuil que les tuiles.
+- **Production de bâtiment** : modifiers de traits moyennés sur tous les workers ; report fractionnaire par output (`Building.output_carry`) — stocks entiers, bonus fractionnaires matérialisés dans le temps.
+- **Stats enrichies** : détail par personnage, suivi des événements résolus/en attente.
+
+**Dette réglée :**
+- [x] ~~`build_progress`/`build_work` morts~~ — supprimés (la complétion = ressources consommées)
+
+**Dette nommée :**
+- [ ] **`action` du fait `event_resolved` stocke l'index du choix, pas son id** — si l'ordre des choix d'un EventConfig change, l'historique devient ambigu. Acceptable tant que les events sont figés ; à revisiter si on veut des triggers conditionnés aux choix passés.
+
+### Phase 16 — Courbes de stocks
+
+- **Chronicle** : snapshot des stocks en fin de tour (`snapshot_resources`), historique requêtable (`resource_history`).
+- **`ResourceChart`** : Control custom, `_draw()`, auto-scale, légende. Filtre sur `ResourceType.stackable`.
+- **Intégration StatsPopup** : graphique en tête du popup.
+
+**Dette nommée :**
+- [ ] **Palette codée en dur** dans `ResourceChart.PALETTE`. À terme, une couleur pourrait vivre sur `ResourceType.color` (comme `icon`). Fallback HSV en attendant, donc pas bloquant.
+- [ ] **Pas de survol/tooltip sur les points** — lecture des valeurs uniquement via la grille. À ajouter si le besoin devient pressant.
+
 ---
 
 ## 🎯 Cap thématique : « Évoluer pour survivre » dans le moteur

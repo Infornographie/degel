@@ -90,12 +90,12 @@ func compute_flow() -> Dictionary:
 		# Outputs produits au prorata ; le reste (1 - factor) est impossible
 		var build_mod: float = _building_output_modifier(b)
 		for output_name in b.config.outputs:
-			var output_full: float = round(b.config.outputs[output_name] * bmult * build_mod)
-			var produced: float = output_full * factor
+			var output_full: float = b.config.outputs[output_name] * bmult * build_mod
+			var produced: float = _building_output_with_carry(b, output_name, bmult, build_mod, factor, false)
 			if produced > 0.0:
 				_add(production, output_name, produced)
 				stock[output_name] = stock.get(output_name, 0.0) + produced
-			var blocked: float = output_full - produced
+			var blocked: float = output_full * (1.0 - factor)
 			if blocked > 0.0:
 				_add(impossible, output_name, blocked)
 
@@ -165,6 +165,8 @@ func gather_risky() -> Array:
 ## Exécute réellement le tour sur gs.resources. Les événements (chasses,
 ## mutations, constructions, morts...) sont enregistrés via gs.log_event().
 func execute_turn() -> void:
+	# 0) Snapshot des activités du tour (Chronicle) — ce que chacun fait vraiment.
+	_snapshot_activities()
 	# 1) RISKY d'abord : le gain peut servir dès ce tour.
 	_resolve_risky()
 	# 2) Production des tuiles déterministe.
@@ -179,8 +181,19 @@ func execute_turn() -> void:
 	_resolve_fatigue()
 	# 7) Décrément des durées de traits, retrait des expirés.
 	_resolve_trait_durations()
+	# 8) Snapshot des stocks du tour (Chronicle) — pour les courbes historiques.
+	gs.chronicle.snapshot_resources()
 
 # ── Étapes d'exécution ──
+
+## Enregistre dans le Chronicle ce que chaque survivant fait ce tour.
+## Un snapshot par éveillé actif sur une tuile. Les workers de bâtiments
+## n'ont pas d'activity_id — hors périmètre Phase 1 du Chronicle.
+func _snapshot_activities() -> void:
+	for s in gs.awake_survivors():
+		if s.activity_id == "" or s.tile_key == "":
+			continue
+		gs.chronicle.snapshot_activity(s.id, s.activity_id)
 
 func _resolve_risky() -> void:
 	for tile in gs.hex_map.tiles.values():
@@ -267,15 +280,16 @@ func _resolve_construction() -> void:
 		target.build_resources_consumed[resource_name] = target.build_resources_consumed.get(resource_name, 0.0) + to_consume
 		work_left -= to_consume
 	gs.construction_progressed.emit(target)
-	# Complétion ?
+	# Complétion ? (epsilon : les additions flottantes peuvent laisser 1e-15 de reste)
 	var done := true
 	for resource_name in target.config.build_cost:
-		if target.build_resources_consumed.get(resource_name, 0.0) < target.config.build_cost[resource_name]:
+		if target.build_resources_consumed.get(resource_name, 0.0) < target.config.build_cost[resource_name] - 0.001:
 			done = false
 			break
 	if done:
 		target.complete_construction()
 		gs.log_event("colony", "EVENT_CONSTRUCTION_COMPLETED", ["tr:" + target.config.name_key])
+		gs.chronicle.record(&"construction_completed", -1, target.config.id)
 		if zone.construction_target == str(target.instance_id):
 			zone.construction_target = ""
 			# Bascule auto sur un autre chantier en cours, s'il y en a.
@@ -298,7 +312,7 @@ func _resolve_buildings_operation() -> void:
 			gs.resources[input_name] = gs.resources.get(input_name, 0.0) - needed
 		var build_mod: float = _building_output_modifier(b)
 		for output_name in b.config.outputs:
-			var produced: float = round(b.config.outputs[output_name] * bmult * build_mod) * factor
+			var produced: float = _building_output_with_carry(b, output_name, bmult, build_mod, factor, true)
 			gs.resources[output_name] = gs.resources.get(output_name, 0.0) + produced
 
 func _resolve_tile_mutations() -> void:
@@ -306,6 +320,8 @@ func _resolve_tile_mutations() -> void:
 		if tile.type == HexTile.Type.FOREST and tile.health >= 5:
 			gs.hex_map.mutate_tile(tile, HexTile.Type.PLAINS)
 			gs.log_event("system", "EVENT_FOREST_DEPLETED", [])
+			gs.chronicle.record(&"deforestation", tile.worker_id, tile.key())
+			gs.event_manager.set_milestone(&"first_deforestation")
 
 # ──────────────────────────────────────────────────────────────────────────
 #  HELPERS PARTAGÉS (utilisés par flux ET exécution)
@@ -440,21 +456,41 @@ func _construction_modifier(s: Survivor) -> float:
 
 ## Modifier de bâtiment : lit le premier worker (1 worker/bâtiment pour l'instant),
 ## agrège ses traits. Le filtre trait matche sur input ∪ output du bâtiment.
+## Modificateur de production d'un bâtiment : moyenne des modifiers de traits
+## de TOUS ses workers (le produit exploserait à plusieurs workers).
 func _building_output_modifier(b: Building) -> float:
 	if b.worker_ids.is_empty():
-		return 1.0
-	var s: Survivor = gs.roster.get_by_id(b.worker_ids[0])
-	if s == null:
 		return 1.0
 	var resources_in_play: Array = []
 	for r in b.config.inputs.keys():
 		resources_in_play.append(StringName(r))
 	for r in b.config.outputs.keys():
 		resources_in_play.append(StringName(r))
-	var total: float = 1.0
-	for t in s.traits:
-		total *= t.building_modifier_for(resources_in_play)
-	return total
+	var sum: float = 0.0
+	var count: int = 0
+	for wid in b.worker_ids:
+		var s: Survivor = gs.roster.get_by_id(wid)
+		if s == null:
+			continue
+		var total: float = 1.0
+		for t in s.traits:
+			total *= t.building_modifier_for(resources_in_play)
+		sum += total
+		count += 1
+	if count == 0:
+		return 1.0
+	return sum / count
+
+## Production entière d'un output ce tour, avec report fractionnaire.
+## `commit` = true : écrit le report (exécution). false : lecture seule (prévision).
+## Une logique, un endroit : prévision et exécution passent toutes deux ici.
+func _building_output_with_carry(b: Building, output_name: String, bmult: float, build_mod: float, factor: float, commit: bool) -> float:
+	var full: float = b.config.outputs[output_name] * bmult * build_mod * factor
+	var with_carry: float = full + b.output_carry.get(output_name, 0.0)
+	var produced: float = floor(with_carry)
+	if commit:
+		b.output_carry[output_name] = with_carry - produced
+	return produced
 
 func _add(dict: Dictionary, key: String, amount: float) -> void:
 	if amount == 0.0:
@@ -471,9 +507,18 @@ const FATIGUE_THRESHOLD: int = 3
 ## Met à jour le compteur de fatigue de chaque éveillé, puis délègue à
 ## `enforce_tired_invariant` la pose/retrait du trait `tired`.
 ## À appeler UNE fois par tour, après la résolution de production.
+## Clé d'occupation d'un survivant : son activité de tuile, ou son bâtiment,
+## ou vide s'il ne fait rien. Base commune du suivi de fatigue.
+func occupation_key(s: Survivor) -> StringName:
+	if s.activity_id != "":
+		return StringName(s.activity_id)
+	if s.building_id != "":
+		return StringName("building:" + s.building_id)
+	return &""
+
 func _resolve_fatigue() -> void:
 	for s in gs.awake_survivors():
-		var current: StringName = StringName(s.activity_id)
+		var current: StringName = occupation_key(s)
 		if current == &"":
 			s.fatigue_streak = 0
 			s.last_activity_id = &""
@@ -487,19 +532,21 @@ func _resolve_fatigue() -> void:
 
 ## Réconcilie l'état `tired` du survivant avec l'invariante :
 ## has_trait("tired") ⇔ fatigue_streak ≥ FATIGUE_THRESHOLD
-##                     ET activity_id == last_activity_id
-##                     ET activity_id != ""
-## À appeler après toute mutation d'`activity_id` ou de `fatigue_streak`.
+##                     ET occupation_key == last_activity_id
+##                     ET occupation_key != ""
+## À appeler après toute mutation d'occupation (tuile OU bâtiment) ou de
+## `fatigue_streak`.
 ## Silencieux tant que les traits `tired` / `normal` n'existent pas encore.
 func enforce_tired_invariant(s: Survivor) -> void:
 	var tired_trait: TraitConfig = _get_trait_by_id(&"tired")
 	var normal_trait: TraitConfig = _get_trait_by_id(&"normal")
 	if tired_trait == null or normal_trait == null:
 		return
+	var key: StringName = occupation_key(s)
 	var should_be_tired: bool = (
 		s.fatigue_streak >= FATIGUE_THRESHOLD
-		and s.activity_id != ""
-		and StringName(s.activity_id) == s.last_activity_id
+		and key != &""
+		and key == s.last_activity_id
 	)
 	if should_be_tired:
 		if not s.has_trait(&"tired"):

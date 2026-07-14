@@ -237,9 +237,51 @@ TRAIT_HANDY_DESC,"Sait travailler de ses mains. Le concret lui parle mieux que l
 TRAIT_FIRST_AWAKENED,Premier éveillé,First awakened
 TRAIT_FIRST_AWAKENED_DESC,"Premier à ouvrir les yeux dans ce monde sans nous. Ce silence, iel le porte.","First to open their eyes in this world without us. That silence, they carry it."
 ,,
-
+# ─── STATISTIQUES ─────────────────,,
+BTN_STATS,📊 Statistiques,📊 Statistics
+BTN_CLOSE,Fermer,Close
+STATS_TITLE,Chroniques de la colonie,Colony chronicles
+STATS_SECTION_WAKES,Réveils,Wakes
+STATS_WAKES,Survivants réveillés : %d,Survivors woken: %d
+STATS_TARGETED_WAKES,"Recherches ciblées : %d réussies, %d échouées","Targeted searches: %d succeeded, %d failed"
+STATS_SECTION_LOSSES,Pertes,Losses
+STATS_DEATHS_STARVED,Morts de faim : %d,Starved: %d
+STATS_DEATHS_SWITCHED_OFF,Cryos éteints : %d,Cryos switched off: %d
+STATS_FAMINES,Famines traversées : %d,Famines endured: %d
+STATS_SECTION_CONSTRUCTION,Chantiers,Construction
+STATS_CONSTRUCTIONS,%d terminés sur %d lancés,%d completed out of %d started
+STATS_SECTION_ECOLOGY,Écologie,Ecology
+STATS_DEFORESTATIONS,Forêts disparues : %d,Forests lost: %d
+STATS_SECTION_ACTIVITIES,Tours travaillés par activité,Turns worked per activity
+STATS_NO_ACTIVITY,Personne n'a encore travaillé.,No one has worked yet.
+STATS_NOBODY,Personne,Nobody
+STATS_DEPARTED,Un disparu,Someone departed
+STATS_SECTION_EVENTS,Événements,Events
+STATS_NO_EVENT,Aucun événement pour l'instant.,No events yet.
+STATS_EVENT_RESOLVED_LINE,Tour %d — %s ✓,Turn %d — %s ✓
+STATS_EVENT_PENDING_LINE,En attente — %s,Pending — %s
+STATS_SECTION_CHART,Stocks au fil des tours,Stocks over time
+STATS_CHART_EMPTY,Aucune donnée pour l'instant (jouez au moins un tour).,No data yet (play at least one turn).
+,,
+,,
 # ─── JOBS : LEGACY (à supprimer ?) ─────────────────,,
 JOB_IDLE,Repos,Idle
 JOB_FARMER,Cultiver,Farmer
 JOB_LUMBERJACK,Bûcheronner,Lumberjack
 JOB_MINER,Miner,Miner
+,,
+,,
+# ─── ÉVÉNEMENTS NARRATIFS ─────────────────,,
+BTN_EVENT,⚡ Événement,⚡ Event
+EVENT_RESOLVED,"Événement « %s » résolu (choix : %s)","Event '%s' resolved (choice: %s)"
+,,
+# ─── EVENT : PREMIER ÉVEIL ─────────────────,,
+EVENT_FIRST_WAKE_TITLE,Amorçage,Boot sequence
+EVENT_FIRST_WAKE_BODY,"L'écran du terminal clignote. Une voix synthétique grésille dans le silence du bunker : « Protocole de réveil initié. Un sujet détecté. Systèmes vitaux... fonctionnels. Bienvenue. » Personne ne répond. Le curseur attend.","The terminal screen flickers. A synthetic voice crackles through the bunker's silence: 'Wake protocol initiated. One subject detected. Vital systems... functional. Welcome.' No one answers. The cursor waits."
+EVENT_FIRST_WAKE_ACK,Commencer,Begin
+,,
+# ─── EVENT : PREMIÈRE DÉFORESTATION ─────────────────,,
+EVENT_FIRST_DEFORESTATION_TITLE,La forêt recule,The forest retreats
+EVENT_FIRST_DEFORESTATION_BODY,"Là où il y avait des arbres il n'y a plus que de la terre retournée. La forêt s'est retirée sans un bruit. C'est allé vite — plus vite qu'on ne l'aurait cru. Quelqu'un murmure que ce n'est pas grave. Quelqu'un d'autre ne dit rien.","Where there were trees only turned earth remains. The forest retreated without a sound. It happened fast — faster than anyone expected. Someone mutters that it doesn't matter. Someone else says nothing."
+EVENT_FIRST_DEFORESTATION_WORRY,On ne peut pas continuer comme ça.,We can't keep doing this.
+EVENT_FIRST_DEFORESTATION_SHRUG,C'est le prix à payer.,That's the price we pay.

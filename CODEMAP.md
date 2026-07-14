@@ -44,7 +44,7 @@ survivants, bâtiments) et orchestre la boucle de tour. Délègue la résolution
  
 **Fonctions clés :**
 - `advance_turn() -> void` — boucle de tour complète : résolution, repas/famine, extinctions, érosion réacteur, fin de run
-- `wake(id) -> bool` / `targeted_wake(prof_id) -> bool` — réveil normal / ciblé d'un survivant
+- `wake(id) -> bool` / `targeted_wake(prof_id) -> bool` — réveil normal / ciblé d'un survivant + milestone `first_wake`
 - `assign_activity(...)`, `assign_to_tile(...)`, `assign_to_building(...)` et leurs `unassign_*` — affectations joueur
 - `start_construction(target_type_id, slot_index) -> bool`, `cancel_construction`, `set_active_construction` — gestion des chantiers
 - `expected_activity_yield(s, tile, activity) -> int` — helper UI, délègue à `TurnResolver.compute_activity_yield()`
@@ -53,10 +53,11 @@ survivants, bâtiments) et orchestre la boucle de tour. Délègue la résolution
 - `compute_score() -> Dictionary`
 - `best_yield_for_activity(s, activity, exclude_tile_key = "") -> int` — meilleur yield d'un survivant pour une activité, sur les tuiles workables compatibles ; exclut optionnellement une tuile (utilisé par le popup d'affectation pour révéler le "meilleur ailleurs")
 - `best_yield_all_survivors(activity) -> int` — meilleur yield tous éveillés × toutes tuiles confondus (échelle absolue affichée en en-tête de section du popup)
+- event_manager: EventManager
 **Autres fonctions :**
 `can_wake(id)`, `can_targeted_wake()`, `awake_count()`, `awake_survivors()`, `survivors()`, `electricity_consumed_this_turn()`, `_find_building_by_type(type_id)`, `_find_building_by_instance(instance_id)`, `_remove_survivor_from_assignments(s)`, [...]
  
-Signaux : `turn_advanced`, `resources_changed`, `survivor_woken`, `survivor_assigned`, `nightly_deaths`, `famine_started`, `famine_ended`, `candidates_changed`, `tile_assignment_changed`, `run_ended`, `building_assignment_changed`, `construction_started`, `construction_progressed`, `construction_completed`, `event_logged`
+Signaux : `turn_advanced`, `resources_changed`, `survivor_woken`, `survivor_assigned`, `nightly_deaths`, `famine_started`, `famine_ended`, `candidates_changed`, `tile_assignment_changed`, `run_ended`, `building_assignment_changed`, `construction_started`, `construction_progressed`, `construction_completed`, `event_logged`, `event_queued`, `event_resolved`
  
 ### systems/core/turn_resolver.gd
 `class_name TurnResolver` extends RefCounted — Source unique de vérité pour la résolution
@@ -80,7 +81,7 @@ les deux garantit que l'affichage ne ment jamais.
 data-driven (`.tres` unique, édité dans l'inspecteur). Ajouter/retirer un type de contenu
 ne touche que ce fichier, pas le code.
 - `static load_default() -> GameRegistry` — charge `res://resources/game_registry.tres` (caché par Godot, sans coût en appels répétés)
-Champs : `resource_types`, `buildings`, `activities`, `tribes`, `professions`, `traits`, `names` (tous `Array[...]`)
+Champs : `resource_types`, `buildings`, `activities`, `tribes`, `professions`, `traits`, `names`, `events` (tous `Array[...]`)
  
 ### systems/core/game_config.gd
 `class_name GameConfig` extends Resource — Configuration globale d'équilibrage, éditable
@@ -95,6 +96,15 @@ de tour). Stocke key i18n + params positionnels pour traduction différée.
 `class_name TileConfig` extends Resource — Ratios de génération de tuiles et rendements
 par activité, par type de tuile.
 - `yields_for_tile(tile_type) -> Dictionary`
+
+### `systems/core/chronicle.gd`
+- Classe `Chronicle` (RefCounted) — journal de faits machine-requêtable, sous-système de GameState
+- Distinct de `event_log` (affichage humain) : faits structurés pour les triggers d'événements
+- `record(action, actor_id, target, data)` — enregistre un fait immuable
+- `snapshot_activity(survivor_id, activity_id)` — ce que chaque survivant fait à chaque tour (posé par TurnResolver)
+- Requêtes : `facts_of()`, `count_of()`, `consecutive_turns_on()` (streak avec détection de trou)
+- Actions Phase 1 : wake, targeted_wake, targeted_wake_failed, assign, deforestation, construction_started, construction_completed, death, famine_started, famine_ended
+
 ---
  
 ## systems/world/ — Carte, ressources, activités
@@ -200,6 +210,31 @@ bâtiment. `enum Family { TRANSFORMATION, FUNCTION }`. Groupes : Identity, Const
 `class_name BuildingRegistry` extends RefCounted — Registry des `BuildingConfig`, chargé
 depuis `GameRegistry`.
 - `get_config(id) -> BuildingConfig`, `starters() -> Array[BuildingConfig]`, `constructibles() -> Array[BuildingConfig]`
+ 
+---
+ 
+## systems/events/ — Evènements
+ 
+### `systems/events/event_choice.gd`
+- Classe `EventChoice` (Resource) — un choix dans un événement narratif
+- `label_key`, `resource_effects`, `traits_to_add`
+
+### `systems/events/event_config.gd`
+- Classe `EventConfig` (Resource) — template d'événement narratif (.tres)
+- Champs identity : `id`, `title_key`, `body_key`
+- Queue : `priority`, `is_urgent`, `one_shot`
+- Trigger : `trigger_type` (MILESTONE), `trigger_milestone`, `prerequisites`
+- `choices: Array[EventChoice]`
+
+### `systems/events/event_manager.gd`
+- Classe `EventManager` (RefCounted) — sous-système de GameState
+- `set_milestone(flag)` — pose un flag, scanne et enfile les events éligibles
+- `has_pending()`, `peek()` — consultation de la queue
+- `resolve(choice_index)` — applique les effets, marque résolu, dépile
+- `was_resolved(event_id)` — vérifie si un event a été résolu
+- `_scan_and_enqueue()` — vérifie éligibilité de tous les EventConfig du registry
+- `_apply_effects(choice)` — deltas ressources + traits sur éveillés
+
 ---
  
 ## systems/traits/ — Traits
@@ -326,7 +361,7 @@ auto-scroll bas).
 nécrologie, langue, quitter) + label de statut de fin de run. Émet `language_toggled`
 (le rebuild complet reste la responsabilité de `MainUi`).
  
-**Fonctions clés :** `_on_advance_pressed()`, `_on_necrology_pressed()`, `_on_toggle_lang_pressed()`, `_on_run_ended(cause)`
+**Fonctions clés :** `_on_advance_pressed()`, `_on_necrology_pressed()`, `_on_toggle_lang_pressed()`, `_on_run_ended(cause)`, `_event_button`, `_on_event_pressed`, `_on_event_queue_changed`
  
 ### scenes/ui/resources_bar.gd
 `class_name ResourcesBar` extends Control — Barre des stocks en bas d'écran. Itère
@@ -334,6 +369,18 @@ nécrologie, langue, quitter) + label de statut de fin de run. Émet `language_t
  
 **Fonctions clés :** `_rebuild()`, `_make_pill(type)`
  
+### `scenes/ui/event_popup.gd`
+- Classe `EventPopup` (PopupPanel) — popup de résolution d'événement
+- `show_event(parent, config)` — static, crée et affiche le popup
+- Titre + corps narratif (RichTextLabel BBCode) + boutons de choix
+- Échap ferme sans résoudre (le joueur revient via le bouton)
+
+### `scenes/ui/stats_popup.gd`
+- Classe `StatsPopup` (PopupPanel) — écran de statistiques construit sur le Chronicle
+- `show_stats(parent)` — static, crée et affiche
+- Cinq sections agrégées en lecture seule : réveils, pertes, chantiers, écologie (déforestations par acteur), activités
+- `_survivor_name(id)` — fallback « disparu » pour les acteurs sortis du roster
+
 ---
  
 ## scenes/ui/buildings/ — Vues spécifiques par bâtiment

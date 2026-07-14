@@ -17,12 +17,8 @@ var level: int = 1
 ## IDs des colons assignés à ce bâtiment. Vide = personne.
 var worker_ids: Array[int] = []
 
-## Progression de la construction, en unités de travail.
-## Quand >= config.build_work, le bâtiment passe en OPERATIONAL.
-var build_progress: float = 0.0
-
 ## Ressources déjà consommées pour la construction. { "wood": 3.0 }.
-## Sert à savoir quand on a tout ce qu'il faut pour avancer.
+## La complétion = tout le build_cost consommé (voir TurnResolver._resolve_construction).
 var build_resources_consumed: Dictionary = {}
 
 ## Pour la zone de construction : id du bâtiment à construire (vide si rien à faire).
@@ -64,8 +60,12 @@ func workers_max() -> int:
 func level_multiplier() -> float:
 	return 1.0 + (level - 1) * config.output_multiplier_per_level
 
+## Report fractionnaire de production par output. { "meal": 0.4 }.
+## Les stocks restent entiers : la fraction non produite ce tour se reporte
+## au tour suivant (2.4/tour = 2, 2, 3, 2, 3...).
+var output_carry: Dictionary = {}
+
 ## Marque le bâtiment comme construit. Appelé par le système de construction.
 func complete_construction() -> void:
 	state = State.OPERATIONAL
-	build_progress = 0.0
 	build_resources_consumed.clear()

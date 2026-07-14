@@ -9,16 +9,25 @@ class_name ButtonsSection
 signal language_toggled
 
 var _advance_button: Button
+var _event_button: Button
 var _status_label: Label
 
 func _ready() -> void:
 	_build()
 	GameState.run_ended.connect(_on_run_ended)
+	GameState.event_queued.connect(_on_event_queue_changed.unbind(1))
+	GameState.event_resolved.connect(_on_event_queue_changed.unbind(1))
 
 func _build() -> void:
 	var vbox := VBoxContainer.new()
 	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(vbox)
+
+	_event_button = Button.new()
+	_event_button.text = tr("BTN_EVENT")
+	_event_button.pressed.connect(_on_event_pressed)
+	_event_button.visible = false
+	vbox.add_child(_event_button)
 
 	_advance_button = Button.new()
 	_advance_button.text = tr("BTN_ADVANCE")
@@ -29,6 +38,11 @@ func _build() -> void:
 	necro_btn.text = tr("BTN_NECROLOGY")
 	necro_btn.pressed.connect(_on_necrology_pressed)
 	vbox.add_child(necro_btn)
+
+	var stats_btn := Button.new()
+	stats_btn.text = tr("BTN_STATS")
+	stats_btn.pressed.connect(_on_stats_pressed)
+	vbox.add_child(stats_btn)
 
 	var lang_btn := Button.new()
 	lang_btn.text = tr("BTN_TOGGLE_LANG")
@@ -46,6 +60,20 @@ func _build() -> void:
 
 func _on_advance_pressed() -> void:
 	GameState.advance_turn()
+
+func _on_stats_pressed() -> void:
+	StatsPopup.show_stats(self)
+
+func _on_event_pressed() -> void:
+	var config: EventConfig = GameState.event_manager.peek()
+	if config == null:
+		return
+	EventPopup.show_event(self, config)
+
+func _on_event_queue_changed() -> void:
+	var has_events: bool = GameState.event_manager.has_pending()
+	_event_button.visible = has_events
+	_advance_button.disabled = has_events or GameState.is_over
 
 func _on_necrology_pressed() -> void:
 	var lines: Array[String] = []
